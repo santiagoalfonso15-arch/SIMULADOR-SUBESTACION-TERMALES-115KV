@@ -190,6 +190,7 @@ table.ct td{padding:6px 6px;border-top:1px solid var(--line);vertical-align:top}
 table.ct td:last-child{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 table.ct td:nth-child(2){color:var(--muted)}
 table.ct thead td{border-top:0;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+table.ct thead.nt td{text-transform:none;letter-spacing:0;font-size:12.5px}
 table.cmp td:nth-child(2){color:var(--ink)}
 .verdict{font-family:var(--f-display);font-size:22px;font-weight:600;padding:10px 14px;border-radius:4px;border:1px solid currentColor}
 .verdict.good{color:var(--open)} .verdict.bad{color:var(--warn);background:var(--warnbg)}
@@ -302,7 +303,7 @@ legend{color:var(--accent)}
     <div class="card"><h2>Bitácora de maniobras</h2><ul class="log" id="log"></ul></div>
   </aside>
 </main>
-<footer class="wrap foot">Simulador de la <b>Subestación Termales 115 kV</b> · Grupo 3 · Basado en las entregas finales de los Grupos 1 a 4 (parámetros y aislamiento, distancias, selección de equipos, apantallamiento), el plano de disposición física rev. 4 (25-nov-2026) y el unifilar de control G01-CNP-01. Norma base: RETIE 2013. Herramienta académica.</footer>
+<footer class="wrap foot">Simulador de la <b>Subestación Termales 115 kV</b> · Grupo 3 · Basado en las entregas finales de los Grupos 1 a 4 (parámetros y aislamiento, distancias, selección de equipos, malla de puesta a tierra, apantallamiento), el plano de disposición física rev. 4 (25-nov-2026), el unifilar de control G01-CNP-01, el informe final (noviembre de 2026) y la memoria de la malla de puesta a tierra (Entrega 4). Normas: RETIE (Resolución 40117 de 2024; tablas de la Resolución 90708 de 2013), IEC 60071, IEEE 80 e IEEE 998. Herramienta académica.</footer>
 <div class="toast" id="toast" hidden></div>
 <div class="guide" id="guide" hidden role="dialog" aria-modal="true" aria-labelledby="gTitle"><div class="box">
   <div class="gh"><img src="img/logo-eci.png" alt=""><div><h2 id="gTitle">Guía rápida del simulador</h2><div class="hint">Subestación Termales 115 kV · barra principal + transferencia</div></div></div>
@@ -334,15 +335,15 @@ const CONFIGS={
 };
 
 /* ---------- Datos por defecto (ejemplo) ---------- */
-const defCB=()=>({ref:'Hitachi Energy DTB 145PM40-SD (TC tipo boquilla incluidos)',tipo:'SF6 tanque muerto',un:123,in:3150,icc:40,mando:'Resorte',ciclo:'O-0,3 s-CO-3 min-CO'});
-const defDS=()=>({ref:'Hitachi Energy SDF, apertura central horizontal',tipoB:'Apertura central',tipoL:'Apertura central',un:123,in:2000,ik:40,mando:'Motor'});
+const defCB=()=>({ref:'Hitachi Energy DTB 145PM40SD (CT de boquilla incluidos)',tipo:'SF6 tanque muerto',un:145,in:3150,icc:40,mando:'Resorte',ciclo:'O-0,3 s-CO-3 min-CO'});
+const defDS=()=>({ref:'Hitachi Energy SDF145 (versión de 123 kV), apertura central horizontal',tipoB:'Apertura central',tipoL:'Apertura central',un:123,in:2000,ik:40,mando:'Motor'});
 const defCT=()=>({rel:'600-1200/1',nuc:'3 × 5P20 + 1 × 0,2S',va:30,ith:31.5});
 const defDPS=()=>({ref:'',ur:120,uc:96,inom:10,clase:'SL · estación liviana',upl:280,cont:'Sí'});
 const defWT=on=>({on:!!on,l:0.5,in:1250,ik:31.5,banda:'90–500',fases:'2 fases (B y C)'});
 const defVT=()=>({rel:'115000/√3 : 115/√3 V',clase:'0,2 / 3P',tipo:'Inductivo'});
 const defTR=()=>({s:40,v1:115,v2:34.5,ucc:10.5,grupo:'YNd11',refr:'ONAN/ONAF'});
-const defLN=d=>({destino:d,long:20,cond:'ACSR 795 kcmil Drake 26/7',amp:900,mva:90});
-const BUSC='1 × AAC 2500 kcmil (Lupine) por fase, flecha 0,33 m, cadenas de amarre 3FL3-074';
+const defLN=d=>({destino:d,long:20,cond:'ACSR 795 kcmil Drake 26/7',amp:853,mva:77.6});/* informe final: Tabla 13 (Drake 853 A a 26 °C y 1800 m) y Tabla 4 (408,9 A por línea en el flujo de carga) */
+const BUSC='1 × AAC 2500 kcmil (Lupine) por fase, flecha 0,33 m, cadenas de 17 discos ANSI 52-3';
 const SDO=.825;/* SDF145: 1650 mm entre aisladores (A), Entrega 3 G3 */
 function makeBay(id,tipo,dest){
   const data={cb:defCB(),ds:defDS(),ct:defCT(),vt:defVT(),dps:defDPS()};
@@ -350,10 +351,10 @@ function makeBay(id,tipo,dest){
   return {id,tipo,fuente:tipo==='linea',data};
 }
 function projTR(b){b.gen=true;b.fuente=true;
-  b.data.tr={tipo:'Autotransformador',fases:'3 unidades monofásicas (banco)',s:135,su:'35 / 40 / 45 MVA por unidad (ONAN/ONAF/OFAF)',v1:115,v2:230,v3:13.8,tap:'+10 × 1 % / −15 × 1 % (lado 230 kV)',ucc:10,grupo:'Y–Y–D (YNa0d1)',refr:'ONAN/ONAF/OFAF'};return b;}
+  b.data.tr={tipo:'Autotransformador (ZPS 7,78 %, ZPT 40 %, ZST 30 % en base 105 MVA)',fases:'3 unidades monofásicas (banco)',s:135,su:'35 / 40 / 45 MVA por unidad (ONAN/ONAF/OFAF)',v1:115,v2:230,v3:13.8,tap:'+10 × 1 % / −15 × 1 % (lado 230 kV)',ucc:7.78,grupo:'Y–Y–D (YNa0d1)',refr:'ONAN/ONAF/OFAF'};return b;}
 /* datos de los entregables oficiales: Grupo 1 (parámetros y aislamiento) y Grupo 2 (distancias), S/E Termales 115 kV */
 const G1DPS={ref:'Siemens 3EL2 096-2PQ3',ur:96,uc:77,inom:10,clase:'Clase 3 de descarga de línea',upl:226};
-const G1LN=['Pereira','Dosquebradas','Santa Rosa–Chinchiná'];
+const G1LN=['Santa Rosa de Cabal','Dosquebradas–Pereira','Chinchiná'];/* informe final, 2.2: salidas hacia Santa Rosa de Cabal, Dosquebradas–Pereira (sur) y Chinchiná (norte) */
 function projDPS(b){Object.assign(b.data.dps,G1DPS);return b;}
 function defaults(){
   return {v:3,cv:1,config:'bpt',
@@ -362,7 +363,6 @@ function defaults(){
     bays:[makeBay('L1','linea',G1LN[0]),makeBay('L2','linea',G1LN[1]),makeBay('L3','linea',G1LN[2]),projTR(makeBay('T1','trafo')),projTR(makeBay('T2','trafo'))].map(projDPS),
     special:{AC:{cb:{...defCB(),in:2000},ds:{...defDS(),in:2000},ct:defCT()},AT:{cb:defCB(),ds:defDS(),ct:defCT()}},
     ins:{pol:'d',alt:1800,bil:'auto',disco:'p3fl',esp:1289,fuga:3169,diam:170,extra:0},
-    grid:{rho:800,rhos:3000,hs:0.15,lx:112,ly:48,D:5,h:0.6,nr:32,lr:3,i3:30,sf:0.3,tf:0.5,tc:0.5,xr:0,peso:50,mat:'cu_hard',size:'auto'},
     shd:{zs:350,k:1,punta:3},
     sw:{}};
 }
@@ -380,16 +380,23 @@ if(!(state.dv>=3)){state.dv=3;state.config='bpt';Object.assign(state.sub,{nombre
   needNormal=true;}
 if(state.dv===3){state.dv=4;state.sub.bcond=BUSC;Object.assign(state.ins,{disco:'p3fl',esp:1289,fuga:3169,diam:170,extra:0});
   state.bays.forEach(b=>{if(b.tipo==='linea'&&b.data.ln)Object.assign(b.data.ln,{long:20,cond:'ACSR 795 kcmil Drake 26/7',amp:900,mva:90});});}
-if(state.gv!==1){state.gv=1;Object.assign(state.grid,{rho:800,rhos:5000,hs:.2,lx:120,ly:60,D:2.5,h:.6,nr:40,lr:9,i3:30,sf:.2,tf:.3,tc:.5,xr:0,peso:50,mat:'cu_hard',size:'auto'});}
+if(state.gv!==2){state.gv=2;state.gridOvr={};delete state.grid;}/* malla del informe final (26-nov-2026): se descartan los datos de exploración guardados con el modelo anterior */
 if(!/AAC/.test(state.sub.bcond||''))state.sub.bcond=BUSC;
-if(state.eqv===1){state.eqv=2;/* entregas corregidas del 21-nov: PT inductivos en las 5 bahías (sin CVT), sitio El Jazmín */
-  state.bays.forEach(b=>{b.data.vt.tipo='Inductivo';});state.sub.sitio='El Jazmín, Santa Rosa de Cabal';}
 if(!(state.eqv>=1)){state.eqv=1;/* equipos de la Entrega 3 de Grupo 3 (selección de equipos, 4c) */
   const CTL={rel:'300-600-1200/5',nuc:'2 × 5P30 + 1 × 0,2S + 1 × 5P30 (diferencial de barras)'},CTT={rel:'1200-2000/5',nuc:'2 × 5P30 + 1 × 0,2S + 1 × 5P30 (diferencial de barras)'};
   const upd=d=>{Object.assign(d.cb,defCB());Object.assign(d.ds,defDS());};
   state.bays.forEach(b=>{const d=b.data;upd(d);Object.assign(d.ct,b.tipo==='linea'?CTL:CTT);if(b.tipo==='linea')d.vt.tipo='Capacitivo';});
-  ['AC','AT'].forEach(k=>{const d=state.special[k];if(d){upd(d);if(d.ct)Object.assign(d.ct,{rel:'1000-2000/5',nuc:'2 × 5P30 + 1 × 0,5'});}});
+  ['AC','AT'].forEach(k=>{const d=state.special[k];if(d){upd(d);if(d.ct)Object.assign(d.ct,{rel:'600-1200-2000/5',nuc:'2 × 5P30 (bahía transferida) + 1 × 0,2S + 1 × 5P30 (diferencial de barras y falla de interruptor)'});}});
   state.busvt.tipo='Inductivo';needNormal=true;}
+if(state.eqv===1){state.eqv=2;/* entregas corregidas del 21-nov: PT inductivos en las 5 bahías (sin CVT), sitio El Jazmín */
+  state.bays.forEach(b=>{b.data.vt.tipo='Inductivo';});state.sub.sitio='El Jazmín, Santa Rosa de Cabal';}
+if(state.eqv===2){state.eqv=3;/* informe final (26-nov-2026): DTB 145PM40SD de 145 kV, SDF145 de 123 kV, CT de la bahía de transferencia, Drake 853 A y destinos de las líneas */
+  const all=[...state.bays.map(b=>b.data),...['AC','AT'].map(k=>state.special[k]).filter(Boolean)];
+  all.forEach(d=>{if(d.cb)Object.assign(d.cb,{ref:defCB().ref,un:145,in:3150,icc:40});if(d.ds)Object.assign(d.ds,{ref:defDS().ref,un:123,in:2000,ik:40});});
+  if(state.special.AT&&state.special.AT.ct)Object.assign(state.special.AT.ct,{rel:'600-1200-2000/5',nuc:'2 × 5P30 (bahía transferida) + 1 × 0,2S + 1 × 5P30 (diferencial de barras y falla de interruptor)'});
+  state.bays.forEach(b=>{const d=b.data;d.vt.tipo='Inductivo';if(b.tipo==='linea'&&d.ln){const k=+String(b.id).replace(/\D/g,'')-1;Object.assign(d.ln,{amp:853,mva:77.6});if(G1LN[k])d.ln.destino=G1LN[k];}
+    if(b.gen&&d.tr)Object.assign(d.tr,{tipo:'Autotransformador (ZPS 7,78 %, ZPT 40 %, ZST 30 % en base 105 MVA)',ucc:7.78});});
+  state.sub.bcond=BUSC;}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
 
 /* ---------- Topología ---------- */
@@ -630,7 +637,7 @@ function renderIED(){const pane=$('#iedPane');if(!pane||tab!=='ied') return;cons
       <div class="row" style="gap:8px;align-items:center;margin-top:6px"><span class="hint" style="color:#cfd8dc">43LR</span><button class="lr ${lr?'l':''}" data-lr="${esc(id)}" type="button">${lr?'LOCAL':'REMOTO'}</button>
       <span class="hint" style="color:#cfd8dc">${lr?'Mando solo desde el patio':'Mando desde SCADA/HMI'}</span></div></div>
      ${sm('Bus de proceso, registro y medida',[`-${px}MU1 · Siemens 6MU85: merging unit, lleva el núcleo 6S (5P60) al 87B`,`-${px}RF1 · registrador de fallas / PMU (oscilografía)`,ln?`-PM${px.slice(-1)==='1'?'10 · -PM11':px.slice(-1)==='2'?'12 · -PM13':'14 · -PM15'} · Schneider ION8650 (kWh/kVArh)`:tr?`-${px}PM7 · ION8650 y -${px}PQ1 · ION9000 (calidad de potencia)`:'-2B9PM9 · ION8650 (kWh/kVArh)',`TC ${ctT}: 625-1250-2500/1 A (toma 1250/1), 6 núcleos: 1S medida · 2S BCU · 3S PP1 · 4S PP2 · 5S RF · 6S 87B`,vtT?`TT ${vtT}: 115/√3 kV / 115/√3 V, 3 núcleos (N1 medida, BCU 25 y RF · N2 PP1 · N3 PP2)`:''].filter(Boolean).join('<br>'))}
-     ${ln?sm('Teleprotección',`-${px}LT1 bobina de onda (PLC) · 85 POTT con eco por NSD570 · 87L por fibra (canal A) solo en el PP2 · sin recierre (79 no habilitado)`):''}
+     ${ln?sm('Teleprotección',`Por fibra óptica OPGW, sin trampa de onda (informe final, 9.5) · 85 POTT con eco por NSD570 · 87L por fibra (canal A) solo en el PP2 · sin recierre (79 no habilitado)`):''}
      ${tr?sm(`-${px}R90 · Siemens 6GC65 Tapcon 230 Pro`,`90 regulador automático de tensión: mide 230 kV y 115 kV y sube o baja el cambiador (OLTC).<br><b>Propias del AT (86M):</b> 63B Buchholz, 63PR alivio de presión, 63SP presión súbita, 63 OLTC, 26 temperatura de aceite, 49 imagen térmica. Solo alarma: 71 nivel de aceite.`):''}
      ${b&&b.gen?`<div class="ied bcu" style="border-style:dashed"><div class="iedh">Extremo ${fmt(b.data.tr.v2)} kV · central (fuera del alcance)</div>
       <div class="mimic">${['HC','HS','HE'].map(r=>{const e=id+':'+r;return `<span class="${sw[e]?'c':'o'}">${esc(T.byId[e].code)}</span>`;}).join('')}</div>
@@ -923,7 +930,7 @@ function renderSVG(st){
   const vtB=(x,y,dir,nd,lab)=>`<line x1="${x}" y1="${y}" x2="${x}" y2="${y+dir*9}" stroke="${col(nd)}" stroke-width="2"/>${dot(x,y,nd)}<circle cx="${x}" cy="${y+dir*14}" r="5" fill="none" stroke="var(--muted)" stroke-width="1.3"/><circle cx="${x}" cy="${y+dir*22}" r="5" fill="none" stroke="var(--muted)" stroke-width="1.3"/><text class="code" x="${x+9}" y="${y+dir*18+3}">${lab}</text>`;
   let s='';
   // barras
-  const busLine=(y,nd,lab,sub)=>`<line x1="${X0-20}" y1="${y}" x2="${W-14}" y2="${y}" stroke="${col(nd)}" stroke-width="${st.en.has(nd)?5:4}" stroke-linecap="round"/><text x="${X0-26}" y="${y+5}" text-anchor="end" font-size="15" font-weight="700">${lab}</text>${sub?`<text x="${X0-26}" y="${y+18}" text-anchor="end" font-size="10.5" style="fill:var(--muted)">${sub}</text>`:''}${fc?`<text class="fcv" x="${X0-26}" y="${y+(sub?31:18)}" text-anchor="end" style="fill:${st.en.has(nd)?RED:GRN}">${st.en.has(nd)?'115,6 kV':'0 kV'}</text>`:''}`;
+  const busLine=(y,nd,lab,sub)=>`<line x1="${X0-20}" y1="${y}" x2="${W-14}" y2="${y}" stroke="${col(nd)}" stroke-width="${st.en.has(nd)?5:4}" stroke-linecap="round"/><text x="${X0-26}" y="${y+5}" text-anchor="end" font-size="15" font-weight="700">${lab}</text>${sub?`<text x="${X0-26}" y="${y+18}" text-anchor="end" font-size="10.5" style="fill:var(--muted)">${sub}</text>`:''}${fc?`<text class="fcv" x="${X0-26}" y="${y+(sub?31:18)}" text-anchor="end" style="fill:${st.en.has(nd)?RED:GRN}">${st.en.has(nd)?(M&&M.BB?fmt(nd==='BT'?M.BB.Vt:nd==='B2'?M.BB.V2:M.BB.V1,1):'109,5')+' kV':'0 kV'}</text>`:''}`;
   let bg='';
   T.all.forEach((id,i)=>{
     const cx=X0+i*BW+BW/2;
@@ -1131,12 +1138,12 @@ function fieldHTML(path,[k,label,type,extra],obj){
 function trV(t){const v=[t.v1,t.v2,t.v3].filter(x=>x!==''&&x!=null).sort((a,b)=>b-a);return v.map(x=>fmt(x)).join('/');}
 function gxCount(){const n=T.all.length;let k=0;for(let i=0;i<=n;i++) if(i%2===0||i===n) k++;return k;}
 function inventory(){const c=T.c,nb=state.bays.length,lines=state.bays.filter(b=>b.tipo==='linea'),cnt=k=>T.els.filter(e=>e.kind===k&&!/:H[CSE]$/.test(e.id)).length;/* solo patio de 115 kV (el lado de 230 kV está fuera del alcance) */
-  const buses=1+(c.b2?1:0), strings=Math.max(0,gxCount()-1)*2*3*(buses+(c.bt?1:0))+lines.length*3, ni=insCalc().n, g=gridCalc();
+  const buses=1+(c.b2?1:0), strings=Math.max(0,gxCount()-1)*2*3*(buses+(c.bt?1:0))+state.bays.length*3*2+lines.length*3, ni=insCalc().n, g=gridCalc();
   const wt=lines.filter(b=>b.data.wt?.on).reduce((a,b)=>a+(b.data.wt.fases.startsWith('3')?3:b.data.wt.fases.startsWith('1')?1:2),0);
-  return [['Interruptores de potencia (52)',cnt('cb'),'SF6 de tanque muerto Hitachi Energy DTB 170PM63-HC (170 kV, BIL 750 kV), uno por bahía equipada'],['Seccionadores (89)',cnt('ds'),'tripolares de apertura central Hitachi Energy SDF: SDF145 de 123 kV (BIL 550) y SDF de 170 kV (BIL 750), fases a 2,75 m; los PT de barra van sin seccionador'],['Cuchillas de puesta a tierra (57)',cnt('es'),'tripolares, en las salidas de línea y de autotransformador'],
-   ['Transformadores de corriente (CT)','de boquilla','toroidales en las boquillas de cada DTB 170PM63-HC (Entrega 3): no hay CT independientes en el patio'],['Transformadores de tensión de bahía (PT)',3*nb,'inductivos Hitachi Energy POF 123 kV (BIL 550 kV): en cada línea a G2 + 2,50 m y en cada banco a G1 − 2,50 m'],['Transformadores de tensión de barra',3*(buses+(c.bt?1:0)),'inductivos Hitachi Energy EMF 170 kV (BIL 750 kV), uno por barra, en el extremo norte (eje 8)'],
-   ['Pararrayos / DPS de 115 kV',3*(nb+buses+(c.bt?1:0)),`${nb+buses+(c.bt?1:0)} juegos Siemens 3EL2 096-2PQ3 (envolvente Q de 230 kV, BIL 750 kV): 3 de entrada de línea (G2 + 4,00 m), 2 frente al X1 de las unidades de los bancos y 2 de barra (BP y BT) bajo el pórtico del eje 7; sin DPS de nodo (plano rev. 4, nota 9). Además, 7 DPS de 230 kV sobre el tanque de cada unidad (borne H1)`],['Trampas de onda',wt,'monofásicas, solo líneas con PLC'],['Transformadores de potencia',nb-lines.length,''],
-   ['Cadenas de aisladores (amarre de barras y remates de línea)',strings,isPol()?`${strings*ni} aisladores poliméricos Siemens ${P3FL.ref} (${ni} por cadena, ${fmt(state.ins.esp,0)} mm)`:`${strings*ni} discos (${ni} por cadena)`],['Conductor de la malla de tierra',g.err?'—':`${fmt(g.LC,0)} m`,g.err?'':`${g.size[0]}, más ${g.nr} varillas`]];}
+  return [['Interruptores de potencia (52)',cnt('cb'),'SF6 de tanque muerto Hitachi Energy DTB 145PM40SD (145 kV, BIL 550 kV, 3150 A, 40 kA), con CT de boquilla, uno por bahía equipada'],['Seccionadores (89)',cnt('ds'),'tripolares de apertura central horizontal Hitachi Energy SDF145 de 123 kV (BIL 550 kV, 2000 A, 40 kA, motorizados): 12 de barra y transferencia y 5 de salida 89L con cuchilla 89LT; fases a 2,75 m; los PT de barra van sin seccionador'],['Cuchillas de puesta a tierra (57 / 89LT)',cnt('es'),'tripolares, integradas a los 5 seccionadores de salida 89L (líneas y autotransformadores), enclavadas con 89L y 89T'],
+   ['Transformadores de corriente (CT)','de boquilla','toroidales en las boquillas de cada DTB 145PM40SD, multirrelación de 5 A y cuatro núcleos (Tabla 18 del informe): no hay CT independientes en el patio'],['Transformadores de tensión de bahía (PT)',3*nb,'inductivos Hitachi Energy POF 123 kV (BIL 550 kV): en cada línea a G2 + 2,50 m y en cada banco a G1 − 2,50 m'],['Transformadores de tensión de barra',3*(buses+(c.bt?1:0)),'inductivos Hitachi Energy POF 123 kV (BIL 550 kV), uno por barra, en la bahía de transferencia B7, conectados directo a la barra antes de sus seccionadores'],
+   ['Pararrayos / DPS de 115 kV',3*(nb+buses+(c.bt?1:0)),`${nb+buses+(c.bt?1:0)} juegos Siemens 3EL2 096-2PQ3 (envolvente Q de 230 kV, BIL 750 kV): 3 de entrada de línea (G2 + 4,00 m), 2 frente al X1 de las unidades de los bancos y 2 de barra (BP y BT) bajo el pórtico del eje 7; sin DPS de nodo (plano rev. 4, nota 9). Además, 7 DPS de 230 kV sobre el tanque de cada unidad (borne H1)`],['Trampas de onda',wt,wt?'monofásicas, solo líneas con PLC':'no se usan: sin CVT no hay acople de onda portadora; teleprotección y comunicaciones por fibra óptica OPGW'],['Autotransformadores (bancos)',nb-lines.length,'bancos de 3 unidades monofásicas de 45 MVA OFAF (135 MVA), 230/115/13,8 kV, YNa0d1, cambiador bajo carga +10/−15 %; más una unidad de reserva AT-R de 45 MVA sin conexión fija'],
+   ['Cadenas de retención de 115 kV (barras, retorno de nivel 3 y llegadas de línea)',strings,isPol()?`${strings*ni} aisladores poliméricos Siemens ${P3FL.ref} (${ni} por cadena, ${fmt(state.ins.esp,0)} mm)`:`${fmt(strings*ni,0)} discos de porcelana ANSI 52-3 (${ni} por cadena, fuga ${fmt(ni*state.ins.fuga,0)} mm, M&E 66,7 kN) más un 10 % de repuesto; aparte, 6 cadenas de 230 kV en los remates`],['Malla de puesta a tierra',g.err?'—':`${fmt(g.LC,0)} m`,g.err?'':`cobre blando ${g.sizeN} a ${fxd(g.m.h,2)} m (retícula base, zona de equipos y refuerzos de esquina), ${g.nRtot} varillas (${g.m.nRe} de ${fmt(g.m.LRe,0)} m y ${g.m.nRi} de ${fxd(g.m.LRi,2)} m), 6 tapas de medición; terreno tratado con FAVIGEL; Rg = ${fxd(g.ref.etap.Rg,3)} Ω (ETAP)`]];}
 function renderData(){renderBlist();renderForm();}
 function renderBlist(){
   const items=[['SUB','Subestación',`${fmt(state.sub.un)} kV`],...T.order.map(id=>[id,id,id==='AC'?'Acople':id==='AT'?(T.comb?'Acople-transf.':'Transferencia'):bayOf(id).tipo==='linea'?'Línea':'Transformador'])];
@@ -1199,8 +1206,8 @@ function towerX(x){return x;}/* plano rev. 4: la línea de 230 kV llega recta de
 const KB=()=>2.10/2.75, GW=()=>4.5;/* plano rev. 4: fases de barra a 2,10 m y 2,40 m a la columna (pórtico de 9,00 m) */
 /* valores de diseño de los Grupos 1 y 2 (capa de cotas 3D); los adoptados se redondean hacia arriba */
 /* Grupo 2 rev. 23-nov-2026 (BIL 650): dft 1,30, dff 1,50, equipos 3,70, líneas 6,50 (mín. 6,15 por vehículos), bahía mín. 9,80 m */
-/* entregas finales 25-nov-2026: Grupo 1 MP 40 %, BIL 550 kV (equipos de 115 kV) y 750 kV (52, SDF 170 kV, PT de barra y DPS); Grupo 2 distancias con BIL 550 */
-const DES={dft:1.10,vb:1.21,dff:1.30,dflex:2.10,sf:1.90,dfs:1.70,pc:3.46,p:3.50,dh:3.00,dv:2.50,hs:3.60,hb:6.54,ham:7.50,fl:.33,hl:6.00,veh:4.0,T:1.91,hvc:5.91,hv:5.95,R:4.0,R230:4.7,hc:2.5,bil:550,bil2:750,pf:230,dps:'Siemens 3EL2 096-2PQ3',upl:226,ldps:21.5,ldps2:43.0,wmin:8.90};
+/* informe final (nov-2026): MP 40 %, BIL 550 kV para todos los equipos de 115 kV (la envolvente de los DPS es de clase 230 kV, BIL 750 kV); distancias con BIL 550 */
+const DES={dft:1.10,vb:1.21,dff:1.30,dflex:2.10,sf:1.90,dfs:1.70,pc:3.46,p:3.50,dh:3.00,dv:2.50,hs:3.60,hb:6.54,ham:7.50,fl:.33,hl:6.00,veh:4.0,T:1.91,hvc:5.91,hv:5.95,R:4.0,R230:4.7,hc:2.5,bil:550,bil2:750,pf:230,dps:'Siemens 3EL2 096-2PQ3',upl:226,ldps:42.9,lmax:41.5,wmin:8.90};
 const GC={};
 const geo=(k,f)=>GC[k]||(GC[k]=f());
 function init3D(){
@@ -1317,12 +1324,14 @@ function pantoEl(id,x,zb,mode='serie-',link){const g=elGroup(id),M=three.M,bl=[]
     if(tap&&link) wire([V(X,YT,Zp+SDO),V(Xc,yT+.05,Zp+SDO)],link,.04);
     if(i===1) box3(.45,.7,.3,M.cab,Xc+.55,1.1,Zp-SDO,g);});
   anim(id,v=>bl.forEach(([p,j])=>p.rotation.y=(j?-1:1)*(1-v)*Math.PI/2));}
-/* cadena de amarre horizontal (aislador polimérico, eje x) */
-function tensStr(xa,xb2,y,zc){const M=three.M,g=new THREE.Group();g.userData.info=`Cadena de amarre de barra · aislador polimérico Siemens ${P3FL.ref} · fuga ${fmt(state.ins.fuga,0)} mm · ${fmt(state.ins.esp,0)} mm · SML ${P3FL.sml} kN`;three.root.add(g);
-  rod(V(xa,y,zc),V(xb2,y,zc),.024,M.poly,g);const L=Math.abs(xb2-xa),n=Math.max(6,Math.round(L/.07));
-  for(let k=0;k<n;k++){const m=cyl(k%2?.07:.095,k%2?.07:.095,.016,M.poly,xa+(xb2-xa)*(k+.5)/n,y,zc,g,12);m.rotation.z=Math.PI/2;}
+/* cadena de amarre horizontal (eje x): discos de porcelana ANSI 52-3 (informe final) o aislador polimérico */
+function tensStr(xa,xb2,y,zc){const M=three.M,g=new THREE.Group();g.userData.info=isPol()?`Cadena de amarre de barra · aislador polimérico Siemens ${P3FL.ref} · fuga ${fmt(state.ins.fuga,0)} mm · ${fmt(state.ins.esp,0)} mm · SML ${P3FL.sml} kN`:`Cadena de retención de barra · ${insCalc().n} discos de porcelana ANSI 52-3 · fuga ${fmt(insCalc().n*state.ins.fuga,0)} mm · paso ${fmt(state.ins.esp,0)} mm · M&E ${P3FL.sml} kN`;three.root.add(g);
+  if(!isPol()){M.porc??=new THREE.MeshStandardMaterial({color:0x7b4b2e,roughness:.28,metalness:.05});const nd=insCalc().n,r=Math.max(.1,Math.min(.14,state.ins.diam/2000));rod(V(xa,y,zc),V(xb2,y,zc),.02,M.galv,g);
+    for(let k=0;k<nd;k++){const m=cyl(r,r*.8,.045,M.porc,xa+(xb2-xa)*(k+.5)/nd,y,zc,g,14);m.rotation.z=Math.PI/2;}}
+  else{rod(V(xa,y,zc),V(xb2,y,zc),.024,M.poly,g);const L=Math.abs(xb2-xa),n=Math.max(6,Math.round(L/.07));
+  for(let k=0;k<n;k++){const m=cyl(k%2?.07:.095,k%2?.07:.095,.016,M.poly,xa+(xb2-xa)*(k+.5)/n,y,zc,g,12);m.rotation.z=Math.PI/2;}}
   [xa,xb2].forEach(xx=>{const m=cyl(.035,.035,.1,M.galv,xx,y,zc,g,8);m.rotation.z=Math.PI/2;});}
-function breakerEl(id,x,z,ctInf){const g=elGroup(id),M=three.M,cg=new THREE.Group(),E0=T.byId[id],t0=E0?ucTag(E0.bay,E0.role):'';cg.userData.info=(E0?`${E0.code}${t0?' ('+t0+')':''} · ${E0.name} · `:'')+(ctInf||'Interruptor SF6 de tanque muerto Hitachi Energy DTB 170PM63-HC (170 kV, BIL 750 kV) · los CT de la bahía son toroidales, montados en sus boquillas (Entrega 3, sin CT independientes)');three.root.add(cg);
+function breakerEl(id,x,z,ctInf){const g=elGroup(id),M=three.M,cg=new THREE.Group(),E0=T.byId[id],t0=E0?ucTag(E0.bay,E0.role):'';cg.userData.info=(E0?`${E0.code}${t0?' ('+t0+')':''} · ${E0.name} · `:'')+(ctInf||'Interruptor SF6 de tanque muerto Hitachi Energy DTB 145PM40SD (145 kV, BIL 550 kV, 3150 A, 40 kA) · los CT de la bahía son toroidales, montados en sus boquillas (Entrega 3, sin CT independientes)');three.root.add(cg);
   /* interruptor SF6 de tanque muerto (Hitachi Energy DTB): un tanque a tierra por fase y dos boquillas poliméricas; los TC van en la base de las boquillas */
   PH.forEach(d=>{const X=x+d;box3(.9,.3,1.6,M.conc,X,.15,z,g);[-.5,.5].forEach(o=>box3(.12,1.3,.12,M.galv,X-.25,.95,z+o,g)||box3(.12,1.3,.12,M.galv,X+.25,.95,z+o,g));
     const tk=cyl(.38,.38,1.5,M.tank,X,1.95,z,g,18);tk.rotation.x=Math.PI/2;[-.75,.75].forEach(o=>{const e=cyl(.38,.38,.04,M.galv,X,1.95,z+o,g,18);e.rotation.x=Math.PI/2;});
@@ -1351,7 +1360,7 @@ function busEq(x,zb,zPT,zD,node,nom){const g=new THREE.Group();g.userData.info=`
   PH.forEach((d,i)=>{const X=x+d,zp=zb+d*KB();tpOne(g,X,zPT,'Inductivo');wire([V(X,busY(X),zp),V(X,YT+.25,zPT)],node,.04);});
   dpsEl(x,zD,YT+.6,node,`DPS de la barra ${nom} · Siemens 3EL2 096-2PQ3 (envolvente clase 230 kV), clase 3 · conectado directo a la barra`,PH.map(d=>({X:x+d,z:zD,to:V(x+d,busY(x+d)-.02,zb+d*KB())})));}
 /* plano P-01: PT y DPS de BP y BT juntos en el extremo norte, junto a la bahía 7 (DPS a 1,30 m y PT a 2,70 m del último pórtico) */
-function busEqN(x1,zb,node,nom,x7){const g=new THREE.Group();g.userData.info=`PT de la barra ${nom} · inductivo Hitachi Energy EMF 170 kV (BIL 750 kV), 115000/√3 : 115/√3 V, 0,2 / 3P · extremo norte, más allá del pórtico del eje 8 (plano P-01 rev. 4) · conectado directo a la barra, sin seccionador`;three.root.add(g);
+function busEqN(x1,zb,node,nom,x7){const g=new THREE.Group();g.userData.info=`PT de la barra ${nom} · inductivo Hitachi Energy POF 123 kV (BIL 550 kV), 115000/√3 : 115/√3 V, 0,2 / 3P · en la bahía de transferencia B7, extremo norte (plano P-01 rev. 4) · conectado directo a la barra, sin seccionador`;three.root.add(g);
   const xt=x1-(three.busLS||1.5)-.4,xP=x1+2.7,xD=(x7??x1)+(three.busLS||1.5)+.9;
   PH.forEach(d=>{const zp=zb+d*KB();tpOne(g,xP,zp,'Inductivo');wire([V(xt,busY(xt),zp),V(xP,YT+.25,zp)],node,.04);});
   dpsEl(0,0,0,node,`DPS de la barra ${nom} · Siemens 3EL2 096-2PQ3 (envolvente Q de 230 kV, BIL 750 kV), clase 3 · bajo el pórtico del eje 7 (plano P-01 rev. 4, nota 9) · conectado directo a la barra`,PH.map(d=>{const zp=zb+d*KB();return {X:xD,z:zp,to:V(xD,busY(xD)-.02,zp)};}));}
@@ -1380,9 +1389,10 @@ function discString(p0,x,yTop,z){const I=state.ins,n=insCalc().n,sp=I.esp/1000,r
     const L=n*sp;rod(V(x,yTop,z),V(x,yTop-.06,z),.03,three.M.galv,par);rod(V(x,yTop-.06,z),V(x,yTop-.06-L,z),.025,three.M.pol,par);
     const ns=Math.max(6,Math.round(L/.06));for(let i=0;i<ns;i++){const rr=i%2?r*.75:r*.95;cyl(rr,rr,.018,three.M.pol,x,yTop-.12-(i+.5)*(L-.12)/ns,z,par,14);}
     rod(V(x,yTop-.06-L,z),V(x,yTop-L-.12,z),.03,three.M.galv,par);return;}
-  par.userData.info=`Cadena de aisladores de suspensión · ${n} discos ${DISCOS[I.disco]?.[0]||''} (paso ${fmt(I.esp,0)} mm, fuga ${fmt(I.fuga,0)} mm)`;
+  par.userData.info=`Cadena de aisladores · ${n} discos de porcelana ANSI 52-3 (paso ${fmt(I.esp,0)} mm, fuga ${fmt(n*I.fuga,0)} mm, M&E ${P3FL.sml} kN)`;
   rod(V(x,yTop,z),V(x,yTop-n*sp-.12,z),.022,three.M.galv,par);
-  for(let i=0;i<n;i++) cyl(r,r*.8,.045,three.M.glass,x,yTop-.07-(i+.5)*sp,z,par,14);}
+  three.M.porc??=new THREE.MeshStandardMaterial({color:0x7b4b2e,roughness:.28,metalness:.05});
+  for(let i=0;i<n;i++) cyl(r,r*.8,.045,three.M.porc,x,yTop-.07-(i+.5)*sp,z,par,14);}
 function gantry(x,zs,h,M,sk){zs.forEach(z=>{if(sk&&sk.some(s=>Math.abs(s-z)<.01))return;box3(1,.45,1,M.conc,x,.22,z,three.root);latMesh(latCol(h+.3,.8,.55),x,0,z);});latMesh(latBeam(zs[zs.length-1]-zs[0]+.6,.6,.65),x,h+.05,(zs[0]+zs[zs.length-1])/2,Math.PI/2);}
 function lineExit(x,p){const M=three.M,ya=11.0,h=ya+strLen(),wt=bayOf(p).data.wt,f=wt?.on?wt.fases:'',tr=d=>f&&(f.startsWith('3')||(f.startsWith('2')&&d>=0)||(f.startsWith('1')&&d===0));if(!ZPL())[-4.8,4.8].forEach(dx=>{box3(1,.45,1,M.conc,x+dx,.22,Z.EXIT,three.root);latMesh(latCol(h+.3,.85,.6),x+dx,0,Z.EXIT);latMesh(latCol(3,.6,.14),x+dx,h+.35,Z.EXIT);});
   if(!ZPL())latMesh(latBeam(10.2,.6,.7),x,h+.05,Z.EXIT);
@@ -1556,7 +1566,7 @@ function envSite(fx0,fx1,fz0,fz1,b0,b1,RZ,ZO){const M=envMats(),root=three.root,
   {const h=new THREE.Mesh(new THREE.SphereGeometry(1,28,14,0,Math.PI*2,0,Math.PI/2),M.grass);h.scale.set(26,7,20);h.position.set(X0+24,-.05,Z0+22);h.userData.noShadow=true;env.add(h);}
   // patio: franja clara (concreto y gravilla clara) en todo el cerramiento y gravilla oscura dentro del anillo vial
   {const a=new THREE.Mesh(new THREE.PlaneGeometry(fx1-fx0,fz1-fz0),M.light);a.rotation.x=-Math.PI/2;a.position.set((fx0+fx1)/2,.005,(fz0+fz1)/2);a.receiveShadow=true;a.userData.noShadow=true;root.add(a);
-   const gx0=b0-6,gx1=b1+7,gz0=RZ+2.5,gz1=ZO-2.5,gp=new THREE.Mesh(new THREE.PlaneGeometry(gx1-gx0,gz1-gz0),M.gravel);gp.rotation.x=-Math.PI/2;gp.position.set((gx0+gx1)/2,.012,(gz0+gz1)/2);gp.receiveShadow=true;gp.userData.noShadow=true;gp.userData.info='Patio de equipos · capa de gravilla de 0,20 m (resistividad superficial 5000 Ω·m, punto 7)';root.add(gp);
+   const gx0=b0-6,gx1=b1+7,gz0=RZ+2.5,gz1=ZO-2.5,gp=new THREE.Mesh(new THREE.PlaneGeometry(gx1-gx0,gz1-gz0),M.gravel);gp.rotation.x=-Math.PI/2;gp.position.set((gx0+gx1)/2,.012,(gz0+gz1)/2);gp.receiveShadow=true;gp.userData.noShadow=true;gp.userData.info='Patio de equipos · capa superficial de grava de 0,35 m (8534,4 Ω·m, memoria de la malla de puesta a tierra); confirmar la resistividad con un ensayo de una muestra húmeda';root.add(gp);
    M.gravel.map.repeat.set((gx1-gx0)/2.5,(gz1-gz0)/2.5);}
   // cerramiento: muro de ladrillo de 0,60 m + malla eslabonada hasta 2,50 m, postes cada 3 m
   {const H=2.5,hb=.6,pm=M.galv,fm=M.fence,gx=b0-8.5,gw=6;const side=(a,b,gap)=>{const L=a.distanceTo(b);if(L<.5)return;const n=Math.ceil(L/3);for(let i=0;i<=n;i++){const q=a.clone().lerp(b,i/n);if(gap&&Math.abs(q.x-gap)<gw/2)continue;box3(.3,.3,.3,M.brick,q.x,hb+.12,q.z,root).scale.set(1,1,1);cyl(.045,.045,H-hb,pm,q.x,hb+(H-hb)/2,q.z,root,6);}
@@ -1601,7 +1611,7 @@ function casaCtl(){const M=envMats(),C=CASA(),root=three.root,g=new THREE.Group(
    for(let i=0;i<=7;i++){const xx=xs+Math.min(i,6)*2.5+(i===7?3.7:0);box3(.12,.02,5,M.paint,xx,.06,(z0+z1)/2,pg);}
    box3(3.4,.02,4.6,M.pmr,xs+15+1.85,.055,(z0+z1)/2,pg);sprite('♿',xs+15+1.85,.9,(z0+z1)/2,.6,pg);}
   // grupo electrógeno al sur de la casa (base 6,00 × 2,20 m)
-  {const gg=new THREE.Group();gg.userData.info='Grupo electrógeno de respaldo 125 kVA (punto 6) · base de 6,00 × 2,20 m al sur de la casa de control (plano P-01 rev. 4)';root.add(gg);
+  {const gg=new THREE.Group();gg.userData.info='Grupo electrógeno de respaldo de 150 kVA (Cummins C125D6D, 156 kVA standby, 208/120 V, tanque de ≈ 650 l) · solo alimenta la barra esencial A en la contingencia C3 · base de 6,00 × 2,20 m al sur de la casa de control (plano P-01 rev. 4)';root.add(gg);
    const gx=x-w/2-4.6;box3(6,.3,2.2,M.conc,gx,.15,z,gg);box3(5.2,2,1.9,new THREE.MeshStandardMaterial({color:0xd4d8cf,roughness:.6}),gx,1.3,z,gg);cyl(.12,.12,1.2,M.dark,gx-1.8,2.8,z,gg,8);}
 }
 function build3D(){
@@ -1620,7 +1630,7 @@ function build3D(){
   const fz=[-6,Z.EXIT+8.5];
   // barras y pórticos
   const buses=[['B1',Z.B1]]; if(c.b2) buses.push(['B2',Z.B2]); if(c.bt) buses.push(['BT',Z.BT]);
-  /* barraje en cable: 1 × AAC 2500 kcmil por fase, tendido entre pórticos (cada 22 m), amarrado a 7,50 m con cadenas 3FL3-074 y flecha 0,33 m */
+  /* barraje en cable: 1 × AAC 2500 kcmil por fase, tendido entre pórticos (cada 22 m), amarrado a 7,50 m con cadenas de 17 discos ANSI 52-3 y flecha 0,33 m */
   {const nI=insCalc().n,G=[...LX.gx].sort((a,b)=>a-b),LS=Math.min(1.6,state.ins.esp/1000*(nI||1));three.busG=G;three.busLS=LS;
    for(const [b,zb] of buses){PH.forEach(d=>{const zc=zb+d*KB();
      for(let i=0;i<G.length-1;i++){const x0=G[i],x1=G[i+1];tensStr(x0,x0+LS,YB,zc);tensStr(x1-LS,x1,YB,zc);
@@ -1635,14 +1645,22 @@ function build3D(){
     if(c.bt){gantry(x,[Z.BT-GW(),Z.BT+GW()],hG,M,SK);}});
   {const gs=gx.length>1?gx:[gx[0]-BW,gx[0]];gzM.filter(nsk).forEach(z=>shield(gs,z,YB+SL,hG+.3));if(c.bt){[Z.BT-GW(),Z.BT+GW()].filter(nsk).forEach(z=>shield(gs,z,YB+SL,hG+.3));}}
   buses.forEach(([b,zb])=>{if(b!=='BT'&&!c.bt) busTP(Math.min(xmax-.9,three.busG[three.busG.length-1]-2.5),zb,b,state.busvt.tipo,`TP (VT) de barra ${b==='B1'?(c.b2?'principal B1':'principal'):'de reserva B2'} · ${state.busvt.tipo.toLowerCase()} · ${state.busvt.rel} · clase ${state.busvt.clase} · Hitachi Energy POF, con su seccionador 89-TP`);});
-  sprite(`Cadenas de amarre ${P3FL.ref.replace(' S025047H2010','')}`,gx[1]??gx[0],YB+1.3,Z.B1-3.7,.75);
-  // malla de puesta a tierra
-  {const g=state.grid,r=gridCalc(),gg=new THREE.Group();three.gridG=gg;root.add(gg);gg.visible=$('#showGrid').checked;
-   if(!r.err){const zc=(ZG1()-30+Z.EXIT+8)/2,cu=M.cu;
-    for(let i=0;i<r.nx;i++){const z=zc-g.ly/2+i*g.ly/(r.nx-1);box3(1,1,1,cu,0,.05,z,gg).scale.set(+g.lx,.06,.28);}
-    for(let j=0;j<r.ny;j++){const x=-g.lx/2+j*g.lx/(r.ny-1);box3(1,1,1,cu,x,.05,zc,gg).scale.set(.28,.06,+g.ly);}
-    for(let k=0;k<r.nr;k++){let t=k*r.Lp/r.nr,x,y;const a=+g.lx,b=+g.ly;if(t<a){x=t;y=0;}else if(t<a+b){x=a;y=t-a;}else if(t<2*a+b){x=a-(t-a-b);y=b;}else{x=0;y=b-(t-2*a-b);}
-      cyl(.12,.12,.5,cu,x-a/2,.2,zc-b/2+y,gg,8);}}}
+  sprite(isPol()?`Cadenas de amarre ${P3FL.ref.replace(' S025047H2010','')}`:`Cadenas de ${insCalc().n} discos ANSI 52-3`,gx[1]??gx[0],YB+1.3,Z.B1-3.7,.75);
+  // malla de puesta a tierra: diseño final de la Entrega 4 (numeral 7) en coordenadas del lote; capa «Malla de tierra»
+  {const r=gridCalc(),gg=new THREE.Group();three.gridG=gg;root.add(gg);gg.visible=$('#showGrid').checked;
+   if(!r.err){const m=r.m,G=r.geo,y0=.05;
+    M.cuZ??=new THREE.MeshStandardMaterial({color:0xd9963f,metalness:.55,roughness:.4,emissive:0x5a2c08});
+    M.rodI??=new THREE.MeshStandardMaterial({color:0x8a2a1a,roughness:.6});
+    M.tapa??=new THREE.MeshStandardMaterial({color:0x2e7d32,roughness:.7});
+    const grp=info=>{const g=new THREE.Group();g.userData.info=info;gg.add(g);return g;};
+    const gB=grp(`Malla de puesta a tierra · retícula base de ${m.nY} × ${m.nX} conductores (${fxd(r.D,2)} × ${fxd(r.Dy,2)} m) en todo el lote de ${fxd(m.Lx,2)} × ${fxd(m.Ly,2)} m · ${r.sizeN} de cobre blando a ${fxd(m.h,2)} m, uniones exotérmicas · Rg = ${fxd(r.ref.etap.Rg,3)} Ω (ETAP, suelo tratado)`);
+    const gZ=grp(`Malla · zona de equipos de ${fmt(m.zLx,0)} × ${fmt(m.zLy,0)} m con ${m.znY} × ${m.znX} conductores (${fxd(r.zDx,2)} × ${fxd(r.zDy,2)} m): bancos AT, bahías de 115 kV, DPS y mandos · toque ≤ ${fmt(r.ref.num.Ezona,0)} V`);
+    const gE=grp(`Malla · refuerzo de esquina de ${fmt(m.eL,0)} × ${fmt(m.eL,0)} m con ${m.en} × ${m.en} conductores (3 m), a ${fxd(m.eOff,1)} m de los bordes: las esquinas descargan 6,4 veces más corriente por metro`);
+    G.L.forEach(q=>{const a=lot3(q.x0,q.y0),b=lot3(q.x1,q.y1),len=Math.hypot(b.x-a.x,b.z-a.z),alongX=Math.abs(b.x-a.x)>Math.abs(b.z-a.z),w=q.g==='base'?.26:.2;
+      const bx=box3(1,1,1,q.g==='base'?M.cu:M.cuZ,(a.x+b.x)/2,y0+(q.g==='base'?0:.012),(a.z+b.z)/2,q.g==='zona'?gZ:q.g==='esq'?gE:gB);bx.scale.set(alongX?len:w,.06,alongX?w:len);bx.userData.noShadow=true;});
+    G.R.forEach(v=>{const p=lot3(v.x,v.y),c=cyl(.14,.14,.7,M.cu,p.x,.35,p.z,gg,8);c.userData.noShadow=true;c.userData.info=`Varilla de esquina de ${fmt(v.L,0)} m (llega a ${fxd(m.h+v.L,2)} m de profundidad, bajo la capa tratada de 3 m) · ${m.nRe} en total, 10 por esquina`;});
+    r.rInt.forEach(v=>{const p=lot3(v.x,v.y),c=cyl(.14,.14,.7,M.rodI,p.x,.35,p.z,gg,8);c.userData.noShadow=true;c.userData.info=`Varilla de ${fxd(v.L,2)} m · ${v.name} · camino corto para corrientes de rayo y de alta frecuencia`;});
+    G.tapas.forEach(([x,y])=>{const p=lot3(Math.min(Math.max(x,.6),m.Lx-.6),Math.min(Math.max(y,.6),m.Ly-.6)),t=box3(.7,.1,.7,M.tapa,p.x,.07,p.z,gg);t.userData.noShadow=true;t.userData.info='Tapa de medición de 30 × 30 cm (RETIE): medición de la resistencia de la malla por caída de potencial (IEEE 81), continuidad entre esquinas y lados, revisión de uniones y del tratamiento';});}}
   T.all.forEach((id,i)=>{const x=xb(i);
     if(T.res.includes(id)){const g=new THREE.Group();g.userData.info=`Bahía 1 · Reserva (salida futura) · solo espacio, pórticos y amarres (plano P-01 rev. 4, nota 6); sus equipos y su DPS de entrada se montan cuando llegue la línea`;g.userData.future=true;root.add(g);
       [Z.B1,Z.B2,Z.CB,Z.CT,Z.TP,Z.BT].filter(z=>z!=null).forEach(z=>PH.forEach(d=>box3(.9,.35,.9,M.conc,x+d,.18,z,g)));
@@ -1668,7 +1686,7 @@ function build3D(){
     {const zz=Z.EXIT-2.2,t=.8,inf=`DPS (pararrayos) ${p} · Ur ${fmt(b.data.dps.ur)} kV, Uc ${fmt(b.data.dps.uc)} kV, ${fmt(b.data.dps.inom)} kA · conectado fase–tierra: bajante desde el conductor, anillo de graduación (anticorona), contador de descargas y conexión a la malla`;
      if(b.gen&&/trif/i.test(b.data.tr.fases||'')) dpsEl(x,0,0,p+'.x',inf+' · junto al transformador',PH.map((d,i)=>{const xp=x+(i-1)*3.2;const zd=ZG1()-TRZ().bz-.6;return {X:xp,z:zd+.4,to:V(xp,7.8,zd)};}));
      else if(b.gen) dpsEl(x,0,0,p+'.x',inf+' · uno frente al borne X1 de cada unidad, a 5,50 m de G1 (plano P-01 rev. 4, nota 9) · envolvente Q (BIL 750 kV)',PH.map((d,i)=>{const ux=x+(i-1)*DXB,zd=ZG1()-5.5;return {X:ux+1.5,z:zd,to:V(ux,8.05,zd)};}));
-     else if(ZPL()&&b.tipo==='linea') dpsEl(x,Z.DE,lineY(Z.DE),p+'.x',inf+' · DPS de entrada de línea a G2 + 4,00 m, 1,50 m después del PT (plano P-01 rev. 4) · envolvente Q de 230 kV, BIL 750 kV · protege hasta 21,5 m (BIL 550) y 43,0 m (BIL 750) de recorrido, MP 40 %');
+     else if(ZPL()&&b.tipo==='linea') dpsEl(x,Z.DE,lineY(Z.DE),p+'.x',inf+' · DPS de entrada de línea a G2 + 4,00 m, 1,50 m después del PT (plano P-01 rev. 4) · envolvente Q de 230 kV, BIL 750 kV · cubre 42,9 m de recorrido de conductor con MP 40 % (informe final, 5.5)');
      else dpsEl(x,zz,b.tipo==='linea'?YT+t/3*(11.0-YT):YT+t/5.7*(6.05-YT),p+'.x',inf);}
     if(c.bt) pantoEl(p+':ST',x,Z.BT,'tap',p+'.x');
     sprite(b.tipo==='linea'?'Conexión: 1 × ACSR Drake 795':'Conexión: 1 × ACSR Bittern 1272',x,YT+2.2,Z.SL2+1.2,.5);
@@ -1780,10 +1798,10 @@ function build3D(){
      dim(V(px+.9,2.25,pz),V(px+.9,DES.p,pz),`+ valor básico ${fmt(DES.vb,2)} m = ${fmt(DES.pc,2)} → ${fmt(DES.p,2)} m`,V(1.9,.2,0));
      dim(V(px-.4,2.6,pz),V(px-.4-DES.dh,2.6,pz),`Zona de trabajo horizontal Dh ${fmt(DES.dh,2)} m`,V(0,.55,0));}
     // aislamiento: BIL y pararrayos
-    tag(`Equipos de 115 kV: BIL ${DES.bil} kV · ${DES.pf} kV 60 Hz; 52, SDF de 170 kV, PT de barra y DPS: BIL ${DES.bil2} kV (Grupo 1, entrega final, MP 40 %)`,x,YT+3.4,Z.CB+.8,.5);
+    tag(`Todos los equipos de 115 kV: BIL ${DES.bil} kV · ${DES.pf} kV 60 Hz · BSL 380 kV (aire) y 450 kV (aceite); envolvente de los DPS: clase 230 kV, BIL ${DES.bil2} kV (informe final, MP 40 %)`,x,YT+3.4,Z.CB+.8,.5);
     tag(`Descargador ${DES.dps} · Ur ${fmt(L.b.data.dps.ur)} kV · clase 3 · NPR ${DES.upl} kV (×1,103 = 249,3 kV a 1800 m) · envolvente Q de clase 230 kV: 2 unidades, 1,77 m, fuga 6160 mm, 51 kg`,x,7.4,Z.DE,.5);
     {const rg=new THREE.Mesh(new THREE.RingGeometry(DES.ldps-.18,DES.ldps+.18,96),new THREE.MeshBasicMaterial({color:0xe85a4f,transparent:true,opacity:.7,side:THREE.DoubleSide,depthWrite:false}));rg.rotation.x=-Math.PI/2;rg.position.set(x,.1,Z.DE);dg.add(rg);
-     tag(`Radio ${fmt(DES.ldps,1)} m desde el descargador: equipos de BIL 550 kV (con BIL 750 kV: ${fmt(DES.ldps2,1)} m) · MP 40 %, Grupo 1 entrega final; se mide por el recorrido del conductor`,x,1.4,Z.DE-DES.ldps,.5);}}
+     tag(`Radio ${fmt(DES.ldps,1)} m desde el descargador (MP 40 %, con el BIL de 750 kV del DPS, informe final 5.5) · se mide por el recorrido del conductor; recorrido máximo del patio ≈ ${fmt(DES.lmax,1)} m (89L de B2)`,x,1.4,Z.DE-DES.ldps,.5);}}
    if(TR){const i=TR.i;dim(V(LX.bnd[i],.35,Z.B1-6.5),V(LX.bnd[i+1],.35,Z.B1-6.5),`Bahía de transformador ${fmt(LX.bnd[i+1]-LX.bnd[i],0)} m`,V(0,.7,0));}
    // zona R del cerramiento (RETIE 2013, art. 23.2, tabla 23.1): franja junto a la cerca sin partes energizadas
    {const R=DES.R,om=new THREE.MeshBasicMaterial({color:0xff7a1a,transparent:true,opacity:.28,depthWrite:false,side:THREE.DoubleSide});
@@ -1875,7 +1893,7 @@ const isPol=()=>state.ins.disco==='p3fl';
 /* Aislamiento: se calcula en la herramienta (calculos.js), aquí solo se lee para dibujar el 3D */
 function toolData(){return window.SUBE?SUBE.load():null;}
 function insCalc(){
-  const S=toolData(); if(!S){Object.assign(state.ins,{disco:'p3fl',esp:1504,fuga:3607,diam:170});Object.assign(P3FL,{ref:'Hubbell Quadri*Sil S025047H2010',liwv:769,sml:120,arco:1217});return {pol:true,bil:550,n:1,len:1504,fugaTot:3607,Lreq:3383,Ka:1.103,ok:true,A:{n:'Polimérico Hubbell Quadri*Sil S025047H2010',tipo:'pol',fuga:3607,lon:1504,liwv:769,sml:120}};}
+  const S=toolData(); if(!S){Object.assign(state.ins,{disco:'std',esp:146,fuga:292,diam:254});Object.assign(P3FL,{ref:'Disco de porcelana ANSI 52-3 (PPC 81022)',liwv:0,sml:66.7,arco:null});return {pol:false,bil:550,n:17,len:2482,fugaTot:4964,Lreq:3383,Ka:1.103,ok:true,A:{n:'Disco de porcelana ANSI 52-3 (PPC 81022)',tipo:'disco',fuga:292,lon:146,sml:66.7}};}
   const a=SUBE.calcAis(S.g,S.ais), A=a.A, I=state.ins, pol=A.tipo==='pol';
   Object.assign(I,{disco:pol?'p3fl':'std',esp:A.lon,fuga:A.fuga,diam:pol?170:254,alt:S.g.alt,pol:S.ais.pol});
   Object.assign(P3FL,{ref:A.n.replace(/^Polimérico (Siemens )?/,''),liwv:A.liwv||0,sml:A.sml,arco:A.arco||(A.lon===1289?1112:null)});
@@ -1884,82 +1902,218 @@ function insCalc(){
 }
 const fld=(id,label,inner)=>`<label class="fld" for="${id}"><span>${label}</span>${inner}</label>`;
 const numIn=(pre,k,v,u,step='any')=>`<div class="u"><input id="${pre}-${k}" data-k="${k}" type="number" step="${step}" value="${esc(v)}">${u?`<em>${u}</em>`:''}</div>`;
-const toolLink=(hash,txt)=>`<span class="hint">Estos datos se editan en la herramienta de diseño del proyecto (página web, módulo ${hash==='malla'?'Malla de tierra':'Aislamiento'}).</span>`;
 function renderIns(){
-  const R=insCalc(), a=R.a, A=R.A, S=R.S;
-  $('#insForm').innerHTML=`<h3>Cadena de aisladores</h3>
-   <p class="note">La coordinación de aislamiento y la cadena se calculan en la herramienta de diseño (módulo Aislamiento). Aquí se muestran los resultados que usa el patio 3D.</p>
-   <div class="row" style="margin:6px 0 4px">${toolLink('aislamiento','Editar en la herramienta')}</div>
-   <dl class="kv"><dt>Tensión máxima Um</dt><dd>${fmt(S?S.g.um:123)} kV</dd><dt>Altitud</dt><dd>${fmt(S?S.g.alt:1800,0)} msnm</dd><dt>Contaminación</dt><dd>${S?esc(SUBE.POL[S.ais.pol][0]):'d'}</dd><dt>Factor kd</dt><dd>${S?fmt(S.ais.kd,1):'1,1'}</dd><dt>Pararrayos</dt><dd>Ur ${S?fmt(S.ais.ur,0):96} kV · Upl ${S?fmt(S.ais.npr,0):226} kV</dd></dl>`;
+  const R=insCalc(), a=R.a||{}, S=R.S;
+  const row=(t,f,v)=>`<tr><td>${t}</td><td>${f}</td><td><b>${v}</b></td></tr>`;
+  $('#insForm').innerHTML=`<h3>Coordinación de aislamiento y cadenas</h3>
+   <p class="note">Capítulo 5 (método convencional de IEC 60071, margen de protección mínimo del 40 %) y Sección 8.3 del informe final. Las barras, el retorno de nivel 3 y las llegadas de línea se amarran con cadenas de retención de discos de porcelana ANSI 52-3; el patio 3D se dibuja con esta cadena.</p>
+   <dl class="kv"><dt>Tensión máxima Um</dt><dd>${fmt(S?S.g.um:123)} kV (sólidamente puesto a tierra, k<sub>e</sub> = ${S?fmt(S.ais.ke,1):'1,4'})</dd><dt>Altitud</dt><dd>${fmt(S?S.g.alt:1800,0)} m s. n. m. · K<sub>a</sub> = ${fxd(R.Ka,3)}</dd><dt>Contaminación</dt><dd>alta, clase d de IEC TS 60815: 25 mm/kV fase–fase · k<sub>d</sub> = ${S?fmt(S.ais.kd,1):'1,1'}</dd><dt>Descargador</dt><dd>Siemens 3EL2 096-2PQ3 · U<sub>r</sub> ${S?fmt(S.ais.ur,0):96} kV · NPR ${S?fmt(S.ais.npr,0):226} kV · NPM ${S?fmt(S.ais.npm,0):180} kV · clase 3 · envolvente Q (clase 230 kV, BIL 750 kV)</dd></dl>
+   <table class="ct" style="margin-top:4px"><tbody>
+    ${row('Sobretensión continua','COV = Um/√3',`${fxd(a.COV,2)} kV`)}
+    ${row('Sobretensión temporal','TOV = k<sub>e</sub> · COV',`${fxd(a.TOV,2)} kV`)}
+    ${row('Tensión asignada mínima','R<sub>n</sub> = máx(COV/0,8; TOV/1,15)',`${fxd(a.Rn,2)} kV → U<sub>r</sub> = 96 kV`)}
+    ${row('Niveles de protección a 1800 m','NPR · K<sub>a</sub> / NPM · K<sub>a</sub>',`${fxd(a.NPRc,1)} / ${fxd(a.NPMc,1)} kV`)}
+    ${row('BIL requerido','1,40 · NPR<sub>c</sub>',`${fxd(1.4*a.NPRc,1)} kV`)}
+    ${row('BIL adoptado (todos los equipos)','mayor normalizado para Um = 123 kV',`${R.bil} kV`)}
+    ${row('Impulso de maniobra','0,75 / 0,83 · BIL, normalizado hacia abajo','380 / 450 kV')}
+    ${row('Distancia máxima DPS–equipo','(750/1,40 − NPR<sub>c</sub>) · 300/(2 · 1000), con el BIL del DPS','42,9 m')}
+   </tbody></table>`;
   renderInsRes();
 }
 function renderInsRes(){
   const R=insCalc(), A=R.A, a=R.a||{};
-  $('#insRes').innerHTML=`<div class="big"><b>${R.bil}</b> kV BIL<span>${R.pol?esc(A.n):`${R.n} discos · ${esc(A.n)}`}</span></div>
-   <table class="ct"><tbody>
-     <tr><td>Fuga exigida</td><td>IEC 60815, criterio del Grupo 1</td><td><b>${fmt(R.Lreq,0)} mm</b></td></tr>
-     <tr><td>Fuga de la cadena</td><td>${esc(A.n)}</td><td><b>${fmt(R.fugaTot,0)} mm ${R.okFuga?'✔':'✘'}</b></td></tr>
-     <tr><td>Longitud de la cadena</td><td>${R.pol?'Un aislador por cadena':`${R.n} discos`}</td><td><b>${fmt(R.len,0)} mm</b></td></tr>
-     ${R.pol?`<tr><td>Impulso de rayo (LIWV)</td><td>Catálogo Siemens 3FL</td><td><b>${A.liwv} kV ≥ ${R.bil} kV</b></td></tr>`:''}
-     <tr><td>Carga mecánica (SML)</td><td>Catálogo</td><td><b>${A.sml} kN</b></td></tr>
-     <tr><td>Distancia máx. pararrayos–equipo</td><td>IEC 60071</td><td><b>${a.sel?fmt(a.sel.dmax,1)+' m':'—'}</b></td></tr>
-     <tr><td>Factor de altitud Ka</td><td>e<sup>(H − 1000)/8150</sup></td><td><b>${fmt(R.Ka,3)}</b></td></tr>
+  if(R.pol){$('#insRes').innerHTML=`<div class="big"><b>${R.bil}</b> kV BIL<span>${esc(A.n)}</span></div><p class="note">Fuga ${fmt(R.fugaTot,0)} mm frente a ${fmt(R.Lreq,0)} mm exigidos.</p>`;return;}
+  const n15=a.nCalc||R.n,lc=n=>n===17?'≈ 3,40 m':n===15?'≈ 3,11 m':`≈ ${fxd(n*.146+.92,2)} m`;
+  const strings=87;
+  $('#insRes').innerHTML=`<div class="big"><b>${R.n}</b> discos por cadena<span>${esc(A.n)} · fuga ${fmt(A.fuga,0)} mm y paso ${fmt(A.lon,0)} mm por disco · M&E ${fxd(A.sml,1)} kN</span></div>
+   <table class="ct cmp"><thead class="nt"><tr><td>Requisito</td><td>Exigido</td><td>${n15} discos (mínimo calculado)</td><td>${R.n} discos (planos P-04 a P-06)</td></tr></thead><tbody>
+     <tr><td>Distancia de fuga</td><td>≥ ${fmt(R.Lreq,0)} mm</td><td>${fmt(a.fugaCalc,0)} mm</td><td><b>${fmt(R.fugaTot,0)} mm ${R.okFuga?'✔':'✘'}</b></td></tr>
+     <tr><td>Aislamiento a 1800 m</td><td>BIL ${R.bil} kV</td><td>CFO 1219 kV; soportabilidad ≈ 1172 kV</td><td>mayor que la de ${n15} discos</td></tr>
+     <tr><td>Distancia protegida por un DPS (MP 40 %)</td><td>cualquier punto del patio</td><td>(1172/1,40 − ${fxd(a.NPRc,1)}) · 300/2000 ≈ ${fmt(a.dStr,0)} m</td><td>mayor que ${fmt(a.dStr,0)} m</td></tr>
+     <tr><td>Carga mecánica</td><td>11,6 kN de diseño</td><td>M&E ${fxd(A.sml,1)} kN</td><td>M&E ${fxd(A.sml,1)} kN</td></tr>
+     <tr><td>Longitud con herrajes</td><td>–</td><td>${lc(n15)}</td><td>${lc(R.n)}</td></tr>
    </tbody></table>
-   <p class="${R.ok?'ok':'warns'}" style="margin:0;${R.ok?'':'list-style:none;padding-left:12px'}">${R.ok?'La cadena cumple fuga e impulso. El patio 3D se dibuja con esta cadena.':'La cadena no cumple: revísela en la herramienta.'}</p>`;
+   <p class="note" style="margin:0">Por fuga bastarían ${a.nFuga} discos (${fmt(R.Lreq,0)}/${fmt(A.fuga,0)}); el cálculo da un mínimo de ${n15} y los planos de pórticos adoptan cadenas de ${R.n}, que cumplen todos los requisitos con más margen y son las que se especifican.</p>
+   <div class="kpis"><div><span>Cadenas de 115 kV</span><b>${strings}</b></div><div><span>Discos (sin repuesto)</span><b>${fmt(strings*R.n,0)}</b></div><div><span>Factor de altitud K<sub>a</sub></span><b>${fxd(R.Ka,3)}</b></div></div>
+   <p class="note" style="margin:0">Según los planos: 48 cadenas de barras (3 por fase a cada lado de los pórticos de barras), 30 del retorno de nivel 3 de B2 a B6 (15 en G1 y 15 en G2) y 9 de llegada de línea en G2, más un 10 % de repuesto. Aparte van las 6 cadenas de 230 kV de los pórticos de remate (P-05), fuera del alcance de la coordinación de 115 kV.</p>
+   <p class="ok" style="margin:0">La cadena cumple fuga, aislamiento y carga mecánica. El patio 3D se dibuja con esta cadena.</p>`;
 }
 
-/* ---------- Malla de puesta a tierra (IEEE Std 80) ---------- */
-const MAT={cu_soft:['Cobre recocido blando (100 %)',7.00],cu_hard:['Cobre duro (97 %)',7.06],ccs40:['Acero recubierto de cobre 40 %',10.45],ccs30:['Acero recubierto de cobre 30 %',12.06]};
-const SIZES=[['2/0 AWG',67.4,10.52],['4/0 AWG',107.2,13.26],['250 kcmil',126.7,14.6],['300 kcmil',152,16.0],['350 kcmil',177.3,17.3],['500 kcmil',253.4,20.6]];
-/* Malla: motor calculos.js (IEEE 80-2013). Valores base = diseño recomendado con división de corriente (25-nov-2026);
-   la pestaña permite explorar r, Rt, guardas, ts, grava y retícula (state.gridOvr, solo en este navegador) */
-const GRID_PRE={rec:{},pdf:{D:5.6,nR:76,LR:2.4,hs:0.15}};
+/* ---------- Malla de puesta a tierra (IEEE Std 80-2013) ---------- */
+/* Motor: calculos.js (SUBE.calcMal). Valores por defecto = diseño final de la memoria de la malla (Entrega 4, numeral 7,
+   versión corregida) y Capítulo 11 del informe final. La pestaña permite explorar terreno, duración, grava, peso, Sf y calibre
+   sobre la misma geometría (state.gridOvr, solo en este navegador). */
+const fxd=(n,d=1)=>Number(n).toLocaleString('es-CO',{minimumFractionDigits:d,maximumFractionDigits:d});
+const GRID_PRE={fin:{},nat:{trat:0}};
+const GRID_K=['trat','tf','rhos','hs','peso','Sf','size'];
+/* coordenadas del lote (x de occidente a oriente, y de sur a norte, origen en la esquina suroccidental) ↔ patio 3D (x de sur a norte, z de occidente a oriente) */
+function lotO(){const LX=layoutX();return {x:LX.bnd[0]-22,z:ZG1()-52.5};}
+function lot3(xp,yp){const o=lotO();return {x:o.x+yp,z:o.z+xp};}
+function lotXY(x3,z3){const o=lotO();return {x:z3-o.z,y:x3-o.x};}
+/* 15 varillas interiores de 2,75 m: neutro de cada unidad de autotransformador (6) y cada fase del DPS de entrada de línea (9),
+   ubicadas sobre los equipos del plano P-01 rev. 4 que dibuja el patio 3D */
+function gridRodsInt(m){applyZ();const LX=layoutX(),zc=ZG1()-TRZ().zc,out=[];
+  T.all.forEach((id,i)=>{const b=bayOf(id);if(!b)return;const x=LX.xs[i];
+    if(b.gen)[-1,0,1].forEach((k,j)=>out.push({...lotXY(x+k*DXB,zc),L:m.LRi,t:'AT',name:`neutro de la unidad ${'ABC'[j]} del banco ${id}`}));
+    else if(b.tipo==='linea')PH.forEach((d,j)=>out.push({...lotXY(x+d,Z.DE),L:m.LRi,t:'DPS',name:`DPS de entrada de ${id}, fase ${'ABC'[j]}`}));});
+  return out.slice(0,Math.max(0,Math.round(m.nRi)));}
 function gridCalc(){
   const S=toolData(); if(!S) return {err:'No se pudo cargar el motor de cálculo de la malla (calculos.js).'};
-  const m=Object.assign({},S.mal,state.gridOvr||{}); m.tc=m.tf; m.ts=m.tf; const o=SUBE.calcMal(m);
-  Object.assign(state.grid,{lx:m.Lx,ly:m.Ly,D:m.D,h:m.h,nr:m.nR,lr:m.LR,rho:m.rho,rhos:m.rhos,hs:m.hs});
-  return {...o,nx:o.nX,ny:o.nY,nr:Math.max(0,Math.round(m.nR)),size:[SUBE.SIZES[m.size][0],o.Asec,o.dmm],okT:o.okEm,okS:o.okEs,sizeOk:o.okCond,Ett:o.Etouch,Est:o.Estep,m};
+  const ov=state.gridOvr||{},m=Object.assign({},S.mal);GRID_K.forEach(k=>{if(ov[k]!=null)m[k]=ov[k];});
+  const o=SUBE.calcMal(m);o.m=m;o.base=S.mal;o.rInt=gridRodsInt(m);o.def=GRID_K.every(k=>String(m[k])===String(S.mal[k]));
+  o.size=[o.sizeN,o.Asec,o.dmm];return o;
 }
-function gridSet(k,v){state.gridOvr=state.gridOvr||{};if(v==null) delete state.gridOvr[k]; else state.gridOvr[k]=v;save();dirty3D=true;renderGrid();}
+function gridSet(k,v){state.gridOvr=state.gridOvr||{};if(v==null) delete state.gridOvr[k]; else state.gridOvr[k]=v;save();renderGrid();}
+/* planta del diseño final (como la Figura 2 de la memoria), con los equipos del patio como referencia */
+function gridPlanSVG(r){
+  const m=r.m,G=r.geo,s=3.5,pl=40,pt=22,W=pl+m.Lx*s+24,H=pt+m.Ly*s+40,X=x=>pl+x*s,Y=y=>pt+(m.Ly-y)*s;
+  applyZ();const LX=layoutX(),o=lotO(),xG1=ZG1()-o.z,xG2=Z.EXIT-o.z,yB0=LX.bnd[0]-o.x,yB1=LX.bnd[LX.bnd.length-1]-o.x,ca=CASA(),cc=lotXY(ca.x,ca.z),xAT=ZG1()-TRZ().zc-o.z;
+  const rc=(x0,y0,x1,y1,fill,op)=>`<rect x="${X(x0)}" y="${Y(y1)}" width="${(x1-x0)*s}" height="${(y1-y0)*s}" fill="${fill}" fill-opacity="${op}"/>`;
+  const lab=(x,y,t,rot)=>`<text ${rot?`transform="translate(${X(x)} ${Y(y)}) rotate(-90)"`:`x="${X(x)}" y="${Y(y)}"`} text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="600" stroke="var(--panel)" stroke-width="3" paint-order="stroke" style="fill:var(--muted)">${t}</text>`;
+  const banks=T.all.map((id,i)=>bayOf(id)?.gen?LX.xs[i]-o.x:null).filter(v=>v!=null);
+  const ctx=rc(cc.x-ca.d/2,cc.y-ca.w/2,cc.x+ca.d/2,cc.y+ca.w/2,'var(--muted)',.3)+rc(xG1,yB0,xG2,yB1,'var(--energ)',.10)
+    +banks.map(y=>rc(xAT-3,y-DXB-2.5,xAT+3,y+DXB+2.5,'var(--red)',.16)).join('');
+  const labs=lab(cc.x,cc.y,'Casa de control',1)+lab((xG1+xG2)/2,(yB0+yB1)/2,'Patio 115 kV (G1–G2)',1)
+    +banks.map((y,i)=>lab(xAT-6.5,y,`Banco AT${i+1}`,1)).join('');
+  const ln=G.L.map(q=>`<line x1="${X(q.x0).toFixed(1)}" y1="${Y(q.y0).toFixed(1)}" x2="${X(q.x1).toFixed(1)}" y2="${Y(q.y1).toFixed(1)}" stroke="var(--accent)" stroke-width="${q.g==='base'?1:.6}" stroke-opacity="${q.g==='base'?.85:.7}"/>`).join('');
+  const rods=G.R.map(v=>`<circle cx="${X(v.x)}" cy="${Y(v.y)}" r="2.6" fill="var(--red)"><title>Varilla de esquina de ${fmt(v.L,0)} m</title></circle>`).join('')
+    +r.rInt.map(v=>{const cx=X(v.x),cy=Y(v.y);return `<path d="M${cx} ${cy-3.6} L${cx+3.4} ${cy+2.6} L${cx-3.4} ${cy+2.6} Z" fill="#b4472c"><title>Varilla de ${fxd(v.L,2)} m · ${esc(v.name)}</title></path>`;}).join('');
+  const tp=G.tapas.map(([x,y])=>`<rect x="${X(x)-4}" y="${Y(y)-4}" width="8" height="8" fill="var(--panel)" stroke="var(--open)" stroke-width="1.6"><title>Tapa de medición de 30 × 30 cm</title></rect>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;margin-top:10px;display:block" role="img" aria-label="Planta del diseño final de la malla de puesta a tierra">
+    ${ctx}${ln}${labs}${rods}${tp}
+    <rect x="${X(0)}" y="${Y(m.Ly)}" width="${m.Lx*s}" height="${m.Ly*s}" fill="none" stroke="var(--ink)" stroke-width="1.2"/>
+    <text x="${X(m.Lx/2)}" y="${H-12}" text-anchor="middle" font-size="11" style="fill:var(--muted)">x (occidente → oriente) = ${fxd(m.Lx,2)} m</text>
+    <text transform="translate(${pl-14} ${Y(m.Ly/2)}) rotate(-90)" text-anchor="middle" font-size="11" style="fill:var(--muted)">y (sur → norte) = ${fxd(m.Ly,2)} m</text>
+    <text x="${X(m.Lx)+12}" y="${pt+4}" text-anchor="middle" font-size="12" font-weight="600" style="fill:var(--ink)">N</text><path d="M${X(m.Lx)+12} ${pt+8} l-4 9 h8 z" fill="var(--ink)"/></svg>
+   <p class="note" style="margin:6px 0 0"><span style="color:var(--accent)">━</span> retícula base, zona de equipos y refuerzos de esquina · <span style="color:var(--red)">●</span> ${G.R.length} varillas de ${fmt(m.LRe,0)} m en las esquinas · <span style="color:#b4472c">▲</span> ${r.rInt.length} varillas de ${fxd(m.LRi,2)} m (neutros AT y DPS de entrada de línea) · <span style="color:var(--open)">□</span> ${G.tapas.length} tapas de medición. Pase el cursor sobre una varilla para ver cuál es.</p>`;
+}
 function renderGrid(){
   const r=gridCalc();
   if(r.err){$('#gridForm').innerHTML=`<p class="note">${esc(r.err)}</p>`;$('#gridRes').innerHTML='';return;}
-  const m=r.m, inp=(k,label,v,u,step)=>fld('g-'+k,label,numIn('g',k,v,u,step));
+  const m=r.m;
+  const sel=(k,label,opts,v)=>fld('g-'+k,label,`<select id="g-${k}" data-k="${k}">${opts.map(([val,t])=>`<option value="${val}" ${String(val)===String(v)?'selected':''}>${esc(t)}</option>`).join('')}</select>`);
   $('#gridForm').innerHTML=`<h3>Malla de puesta a tierra</h3>
-   <p class="note">IEEE Std 80-2013 con división de corriente (cláusula 15.9 y Anexo C): solo la parte de la falla que entra al suelo por la malla (I<sub>G</sub>) produce GPR, toque y paso. El resto vuelve por los neutros de los autotransformadores y por los cables de guarda de las líneas.</p>
-   <dl class="kv"><dt>Falla fase–tierra 3I₀</dt><dd>${fmt(m.If,2)} kA (ETAP, BP) · X/R ${fmt(m.XR,1)}</dd><dt>Suelo ρ</dt><dd>${fmt(m.rho,0)} Ω·m</dd><dt>Malla</dt><dd>${fmt(m.Lx,1)} × ${fmt(m.Ly,1)} m · ${r.nX} × ${r.nY} conductores · D ${fmt(r.Deff,2)} m · h ${fmt(m.h,2)} m</dd><dt>Conductor</dt><dd>${esc(r.size[0])} · ${esc(SUBE.MAT[m.mat].n)}</dd><dt>Grava</dt><dd>${fmt(m.rhos,0)} Ω·m</dd></dl>
-   <h3 style="margin-top:10px">Explorar</h3>
-   <div class="grid2" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
-    ${inp('r','Parte remota r',m.r,'','0.01')}${inp('Rt','Pie de torre Rt',m.Rt,'Ω','1')}${inp('n230','Llegadas 230 kV con guarda',m.n230,'','1')}
-    ${inp('tf','Duración ts = tf',m.tf,'s','0.1')}${inp('hs','Espesor de grava',m.hs,'m','0.05')}${inp('D','Retícula D',m.D,'m','0.1')}${inp('nR','Varillas perimetrales',m.nR,'','1')}${inp('LR','Largo de varilla',m.LR,'m','0.1')}</div>
-   <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn" style="white-space:normal" id="gPreRec">Diseño recomendado (23 × 25, 120 × 9 m)</button><button class="btn" style="white-space:normal" id="gPrePdf">Diseño del PDF (20 × 22, 76 × 2,4 m)</button></div>
-   <p class="note">r = fracción de la falla que viene de fuentes remotas (líneas de 115 kV y lado de 230 kV de los bancos). 0,713 es la estimación con los datos de ETAP; el valor definitivo sale de ETAP con la falla fase–tierra por ramas. Los cambios quedan solo en este navegador.</p>`;
-  $('#gridForm').querySelectorAll('input[data-k]').forEach(el=>el.onchange=()=>{const v=parseFloat(String(el.value).replace(',','.'));if(isFinite(v)) gridSet(el.dataset.k,v);});
-  $('#gPreRec').onclick=()=>{state.gridOvr={};save();dirty3D=true;renderGrid();};
-  $('#gPrePdf').onclick=()=>{state.gridOvr=Object.assign({},GRID_PRE.pdf);save();dirty3D=true;renderGrid();};
-  renderGridRes();
+   <p class="note">Diseño final de la Entrega 4 (numeral 7) y del Capítulo 11 del informe final, con IEEE Std 80-2013 y el RETIE. El sistema es sólidamente puesto a tierra y, por criterio del docente, no se cuenta con los cables de guarda como camino de retorno: S<sub>f</sub> = 1 y toda la corriente de falla drena por la malla. La malla debe cumplir tres condiciones: tensión de toque, tensión de paso y resistencia de 1 Ω o menos. El diseño se validó con ETAP (elementos finitos) y con un cálculo numérico propio.</p>
+   <dl class="kv">
+    <dt>Malla</dt><dd>${fxd(m.Lx,2)} × ${fxd(m.Ly,2)} m (todo el lote, A = ${fmt(r.A,1)} m²) · h = ${fxd(m.h,2)} m</dd>
+    <dt>Falla</dt><dd>I<sub>F</sub> = ${fmt(m.IF,2)} kA asimétrica (enunciado) · X/R = ${fmt(m.XR,0)} · t<sub>f</sub> = t<sub>s</sub> = t<sub>c</sub> = ${fxd(m.tf,1)} s</dd>
+    <dt>Suelo natural</dt><dd>${fmt(m.rhoN,0)} Ω·m, uniforme (no hay mediciones Wenner del sitio)</dd>
+    <dt>Terreno tratado</dt><dd>FAVIGEL: ${fmt(m.rho1,0)} Ω·m en los ${fmt(m.H,0)} m superiores sobre ${fmt(m.rho2,0)} Ω·m (modelo de dos capas de ETAP)</dd>
+    <dt>Capa superficial</dt><dd>grava de ${fxd(m.rhos,1)} Ω·m con h<sub>s</sub> = ${fxd(m.hs,2)} m</dd>
+    <dt>Persona</dt><dd>${m.peso} kg${m.peso===50?' (caso crítico)':''}</dd>
+    <dt>Conductor</dt><dd>${esc(r.sizeN)} de ${esc(SUBE.MAT[m.mat].n.toLowerCase())}, ${esc(SUBE.CONN[m.conn].n.toLowerCase())}</dd></dl>
+   <fieldset><legend>Diseño final</legend>
+    <ul style="margin:0;padding-left:18px;font-size:14px;display:flex;flex-direction:column;gap:4px">
+     <li>Retícula base: ${m.nY} conductores de ${fmt(m.Ly,0)} m y ${m.nX} de ${fxd(m.Lx,1)} m (${fxd(r.D,2)} × ${fxd(r.Dy,2)} m).</li>
+     <li>Zona de equipos de ${fmt(m.zLx,0)} × ${fmt(m.zLy,0)} m desde (${fmt(m.zx0,0)}; ${fmt(m.zy0,0)}): ${m.znY} conductores de ${fmt(m.zLy,0)} m y ${m.znX} de ${fmt(m.zLx,0)} m (${fxd(r.zDx,2)} × ${fxd(r.zDy,2)} m).</li>
+     <li>Refuerzo de ${fmt(m.eL,0)} × ${fmt(m.eL,0)} m con ${m.en} × ${m.en} conductores (${fmt(m.eL/(m.en-1),0)} m) en cada esquina, a ${fxd(m.eOff,1)} m de los bordes.</li>
+     <li>${m.nRe} varillas de ${fmt(m.LRe,0)} m en las esquinas y ${m.nRi} de ${fxd(m.LRi,2)} m en los neutros de los autotransformadores y en los DPS: ${r.nRtot} varillas, ${fmt(r.LR,0)} m.</li>
+     <li>${fmt(r.LC,0)} m de conductor (dato de ETAP), 6 tapas de medición de 30 × 30 cm y 171 colas de Cu 250 kcmil (≈ 238 m) a equipos y estructuras.</li>
+    </ul>
+    ${gridPlanSVG(r)}
+   </fieldset>
+   <fieldset><legend>Explorar</legend>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">
+     ${sel('trat','Terreno',[[1,'Tratado (80 sobre 100 Ω·m)'],[0,'Natural (800 Ω·m)']],m.trat)}
+     ${fld('g-tf','Duración t<sub>s</sub> = t<sub>f</sub>',numIn('g','tf',m.tf,'s','0.1'))}
+     ${fld('g-rhos','Resistividad de la grava',numIn('g','rhos',m.rhos,'Ω·m','100'))}
+     ${fld('g-hs','Espesor de la grava',numIn('g','hs',m.hs,'m','0.05'))}
+     ${sel('peso','Peso de la persona',[[50,'50 kg (diseño)'],[70,'70 kg']],m.peso)}
+     ${fld('g-Sf','Factor de división S<sub>f</sub>',numIn('g','Sf',m.Sf,'','0.05'))}
+     ${sel('size','Calibre del conductor',Object.entries(SUBE.SIZES).map(([k,v])=>[k,v[0]]),m.size)}
+    </div>
+    <div class="row" style="gap:6px;margin-top:10px"><button class="btn" type="button" id="gPreFin">Diseño final (informe)</button><button class="btn" type="button" id="gPreNat">Mismo diseño con el suelo natural</button></div>
+    <p class="note" style="margin:8px 0 0">La geometría es siempre la del diseño final. Los cambios quedan solo en este navegador. S<sub>f</sub> = 1 es el criterio del docente: un valor menor supondría que los cables de guarda de las líneas, que no controla el proyecto, devuelven parte de la corriente.</p>
+   </fieldset>`;
+  $('#gridForm').querySelectorAll('input[data-k]').forEach(el=>el.onchange=()=>{const k=el.dataset.k,v=parseFloat(String(el.value).replace(',','.'));if(isFinite(v)&&(v>0||(k==='hs'&&v>=0))) gridSet(k,v); else renderGrid();});
+  $('#gridForm').querySelectorAll('select[data-k]').forEach(el=>el.onchange=()=>{const k=el.dataset.k;gridSet(k,k==='size'?el.value:+el.value);});
+  $('#gPreFin').onclick=()=>{state.gridOvr={};save();renderGrid();};
+  $('#gPreNat').onclick=()=>{state.gridOvr=Object.assign({},GRID_PRE.nat);save();renderGrid();};
+  renderGridRes(r);
 }
-function renderGridRes(){
-  const r=gridCalc(); if(r.err) return; const m=r.m;
+function renderGridRes(r){
+  r=r||gridCalc(); if(r.err) return; const m=r.m,F=r.ref,E=F.etap,N=F.num;
   const chip=ok=>`<span class="chip ${ok?'en':'earth'}" style="${ok?'color:var(--open)':''}">${ok?'Cumple':'No cumple'}</span>`;
-  const zc=z=>z?`${fmt(z.re,3)} + j${fmt(z.im,3)} Ω`:'—';
-  $('#gridRes').innerHTML=`<div class="verdict ${r.ok?'good':'bad'}">${r.ok?'La malla cumple las tensiones de toque y de paso.':(r.fuera?'Fuera del rango de validez de IEEE 80 (n ≤ 25, D ≥ 2,5 m): verificar con elementos finitos.':'La malla no cumple: ajuste r, la grava o la retícula.')}</div>
-   <table class="ct cmp"><thead><tr><td></td><td>Calculada</td><td>Tolerable (50 kg)</td><td></td></tr></thead><tbody>
-    <tr><td>Tensión de toque (de malla) Em</td><td><b>${fmt(r.Em,0)} V</b></td><td>${fmt(r.Etouch,0)} V</td><td>${chip(r.okEm)}</td></tr>
-    <tr><td>Tensión de paso Es</td><td><b>${fmt(r.Es,0)} V</b></td><td>${fmt(r.Estep,0)} V</td><td>${chip(r.okEs)}</td></tr>
-    <tr><td>Conductor</td><td><b>${esc(r.size[0])}</b></td><td>mín. ${fmt(r.Amin,1)} mm²</td><td>${chip(r.okCond)}</td></tr>
+  const si=ok=>`<b style="color:${ok?'var(--open)':'var(--warn)'}">${ok?'Sí':'No'}</b>`;
+  const fails=[!r.okEm&&'tensión de toque',!r.okEs&&'tensión de paso',!r.okRg&&'resistencia mayor de 1 Ω',!r.okCond&&'calibre del conductor'].filter(Boolean);
+  const verdict=r.ok?(r.def?'El diseño final cumple las tres condiciones: toque, paso y R<sub>g</sub> ≤ 1 Ω.':'Con estos datos la malla cumple toque, paso y R<sub>g</sub> ≤ 1 Ω.'):`La malla no cumple: ${fails.join(', ')}.`;
+  const Lt=r.Etouch,Ls=r.Estep,mg=1-E.Et/E.Ett;
+  const okV=(ieee,etap,num,lim)=>ieee<=lim&&(!r.def||((etap==null||etap<=lim)&&(num==null||num<=lim)));
+  const tolRow=(lab,t,cur)=>`<tr${cur?' style="font-weight:600"':''}><td>${lab}</td><td>${fxd(t.Cs,3)}</td><td>${fxd(t.Et,1)} V</td><td>${fxd(t.Es,1)} V</td></tr>`;
+  const sz=Object.values(SUBE.SIZES).filter(v=>v[1]<=r.Asec+1e-9).slice(-3);
+  $('#gridRes').innerHTML=`<div class="verdict ${r.ok?'good':'bad'}">${verdict}</div>
+   ${r.fuera?`<p class="note" style="margin:0">n = ${fxd(r.n,2)} supera el límite de las ecuaciones simplificadas de IEEE 80 (n ≤ 25) y la malla no es uniforme, así que IEEE 80 pide verificar con un método más completo: ETAP y el cálculo numérico (tabla de validación, abajo).</p>`:''}
+   <table class="ct cmp"><thead class="nt"><tr><td>IEEE 80 (ρ = ${fmt(r.rho,0)} Ω·m)</td><td>Calculado</td><td>Límite</td><td></td></tr></thead><tbody>
+    <tr><td>Tensión de toque (de malla) E<sub>m</sub></td><td><b>${fmt(r.Em,0)} V</b></td><td>${fxd(Lt,1)} V</td><td>${chip(r.okEm)}</td></tr>
+    <tr><td>Tensión de paso E<sub>s</sub></td><td><b>${fmt(r.Es,0)} V</b></td><td>${fxd(Ls,1)} V</td><td>${chip(r.okEs)}</td></tr>
+    <tr><td>Resistencia de la malla R<sub>g</sub> (RETIE)</td><td><b>${fxd(r.Rg,3)} Ω</b></td><td>1 Ω</td><td>${chip(r.okRg)}</td></tr>
+    <tr><td>Conductor</td><td><b>${esc(r.sizeN)} (${fxd(r.Asec,1)} mm²)</b></td><td>≥ ${fxd(r.AreqMm,1)} mm²</td><td>${chip(r.okCond)}</td></tr>
    </tbody></table>
-   <h3 style="margin-top:10px">División de corriente</h3>
+   <div class="kpis"><div><span>Corriente de malla I<sub>G</sub></span><b>${fmt(r.IG,0)} A</b></div><div><span>R<sub>g</sub> · ETAP con suelo tratado</span><b>${fxd(E.Rg,3)} Ω</b></div><div><span>Elevación de potencial GPR (IEEE 80)</span><b>${fmt(r.GPR,0)} V</b></div></div>
+   <h3 style="margin:6px 0 0">Validación con ETAP y con el cálculo numérico</h3>
+   <table class="ct cmp"><thead><tr><td>Parámetro</td><td>IEEE 80</td><td>ETAP</td><td>Numérico</td><td>Límite</td><td>Cumple</td></tr></thead><tbody>
+    <tr><td>R<sub>g</sub> (Ω)</td><td>${fxd(r.Rg,3)}</td><td><b>${fxd(E.Rg,3)}</b></td><td>${fxd(N.Rg,3)}</td><td>1</td><td>${si(okV(r.Rg,E.Rg,N.Rg,1))}</td></tr>
+    <tr><td>GPR (V)</td><td>${fmt(r.GPR,0)}</td><td><b>${fxd(E.GPR,1)}</b></td><td>${fmt(N.GPR,0)}</td><td>–</td><td>–</td></tr>
+    <tr><td>Toque máximo (V)</td><td>${fmt(r.Em,0)}</td><td><b>${fxd(E.Et,1)}</b></td><td>${fmt(N.Et,0)}</td><td>${fxd(Lt,1)}</td><td>${si(okV(r.Em,E.Et,N.Et,Lt))}</td></tr>
+    <tr><td>Paso máximo (V)</td><td>${fmt(r.Es,0)}</td><td><b>${fxd(E.Es,1)}</b></td><td>${fmt(N.Es,0)}</td><td>${fxd(Ls,1)}</td><td>${si(okV(r.Es,E.Es,N.Es,Ls))}</td></tr>
+    <tr><td>Toque en la zona de equipos (V)</td><td>–</td><td>–</td><td>${fmt(N.Ezona,0)}</td><td>${fxd(Lt,1)}</td><td>${si(N.Ezona<=Lt)}</td></tr>
+    <tr><td>Calibre del conductor</td><td colspan="3" style="text-align:center">${esc(r.sizeN)} (ETAP: 120 mm²)</td><td>≥ ${fxd(r.AkcmilMm,1)} mm²</td><td>${si(r.okCond)}</td></tr>
+   </tbody></table>
+   <p class="note" style="margin:0">${r.def?'':'<b>Las columnas ETAP y Numérico son del diseño final del informe</b> (suelo tratado, S<sub>f</sub> = 1, grava de 8534,4 Ω·m); solo la columna IEEE 80 cambia con los datos de Explorar. '}Los tres métodos coinciden: el máximo está en las esquinas (ETAP: toque en el ${esc(E.locT)}, paso en el ${esc(E.locS)}), con un margen del ${fmt(mg*100,0)} % en el toque según ETAP (${fxd(E.Et,1)} frente a ${fxd(E.Ett,1)} V). El paso queda con un margen del ${fmt((1-E.Es/E.Est)*100,0)} %. En la zona de equipos, con la retícula de unos 3 m, el toque queda casi todo por debajo de 300 V. Como el margen del toque es pequeño, la medición después del tratamiento es indispensable.</p>
+   <h3 style="margin:6px 0 0">Corrientes de falla</h3>
    <table class="ct"><tbody>
-    <tr><td>Línea 115 kV, Z∞ (Endrenyi)</td><td>${zc(r.Zi115)}</td></tr>
-    <tr><td>Llegada 230 kV, Z∞</td><td>${m.n230>0?zc(r.Zi230):'sin llegadas'}</td></tr>
-    <tr><td>Guardas en paralelo, Z<sub>eq</sub></td><td>${zc(r.Zeq)}</td></tr>
-    <tr><td>Parte remota que va a la malla |Z<sub>eq</sub>/(Z<sub>eq</sub>+Rg)|</td><td>${r.div!=null?fmt(r.div,4):'—'}</td></tr>
-    <tr><td>Factor de división Sf = r × divisor</td><td><b>${fmt(r.Sf,4)}</b></td></tr>
-    <tr><td>I<sub>G</sub> = Cp · Df · Sf · 3I₀</td><td>${fmt(r.Cp,3)} × ${fmt(r.Df,3)} × ${fmt(r.Sf,4)} × ${fmt(m.If,2)} kA = <b>${fmt(r.IG/1000,2)} kA</b></td></tr>
+    <tr><td>Constante de tiempo</td><td>T<sub>a</sub> = (X/R)/(2πf) = ${fmt(m.XR,0)}/(2π · ${fmt(m.f,0)})</td><td>${fxd(r.Ta*1000,1)} ms</td></tr>
+    <tr><td>Factor de decremento (IEEE 80, 15.10)</td><td>D<sub>f</sub> = √[1 + (T<sub>a</sub>/t<sub>f</sub>)(1 − e<sup>−2t<sub>f</sub>/T<sub>a</sub></sup>)]</td><td>${fxd(r.Df,3)}</td></tr>
+    <tr><td>Corriente simétrica (se ingresa en ETAP con X/R = ${fmt(m.XR,0)})</td><td>3I<sub>0</sub> = I<sub>F</sub>/D<sub>f</sub>(${fxd(r.tIF,0)} s) = ${fmt(m.IF,2)}/${fxd(r.Df0,3)}</td><td>${fxd(r.I3I0,2)} kA</td></tr>
+    <tr><td>Factor de crecimiento (15.9): lo fijan los equipos de ${fmt(m.Ik,1)} kA</td><td>C<sub>p</sub> = I<sub>k</sub>/I<sub>F</sub> = ${fmt(m.Ik,1)}/${fmt(m.IF,2)}</td><td>${fxd(r.Cp,2)}</td></tr>
+    <tr><td>Factor de división</td><td>criterio del docente (caso más desfavorable de IEEE 80)</td><td>${fmt(r.Sf,3)}</td></tr>
+    <tr><td><b>Corriente de malla</b></td><td>I<sub>G</sub> = S<sub>f</sub> · C<sub>p</sub> · D<sub>f</sub> · 3I<sub>0</sub> = ${fmt(r.Sf,3)} × ${fxd(r.Cp,2)} × ${fxd(r.Df,3)} × ${fxd(r.I3I0,2)} kA</td><td><b>${fmt(r.IG,0)} A</b></td></tr>
+    <tr><td>Pico, solo para esfuerzos mecánicos</td><td>i<sub>p</sub> = κ√2 · 3I<sub>0</sub> (equipos: 82 kA)</td><td>${fxd(r.ip,1)} kA</td></tr>
    </tbody></table>
-   <div class="kpis"><div><span>Rg de la malla sola</span><b>${fmt(r.Rg,2)} Ω</b></div><div><span>Malla + cables de guarda</span><b>${r.Zsis!=null?fmt(r.Zsis,2)+' Ω':'—'}</b></div><div><span>Elevación de potencial GPR</span><b>${fmt(r.GPR/1000,1)} kV</b></div></div>
-   <p class="note" style="margin:0">Con 800 Ω·m la malla sola no baja de unos 3,1 Ω (el área del lote lo fija). Con los cables de guarda unidos a la malla en todos los pórticos, el sistema medido queda por debajo de 1 Ω (RETIE 2013, Tabla 15.4). Condiciones: guardas continuos y unidos a la malla, torres con Rt ≤ 20 Ω, líneas largas (20 km), r confirmado con ETAP.</p>`;
+   <h3 style="margin:6px 0 0">Conductor (ecuación térmica de IEEE 80, 11.3)</h3>
+   <table class="ct"><tbody>
+    <tr><td>Corriente y duración</td><td>I = C<sub>p</sub> · D<sub>f</sub> · 3I<sub>0</sub>${Math.abs(r.Df-r.Df0)<1e-9?' = C<sub>p</sub> · I<sub>F</sub>':''} · t<sub>c</sub> = t<sub>f</sub></td><td>${fxd(r.Icond,1)} kA · ${fxd(r.tc,1)} s</td></tr>
+    <tr><td>Sección mínima</td><td>${esc(SUBE.MAT[m.mat].n)}: TCAP ${fxd(SUBE.MAT[m.mat].TC,2)}, α<sub>r</sub> ${SUBE.MAT[m.mat].ar}, ρ<sub>r</sub> ${fxd(SUBE.MAT[m.mat].rr,2)} µΩ·cm, K<sub>0</sub> ${SUBE.MAT[m.mat].K0}, T<sub>m</sub> ${fmt(r.Tm,0)} °C, T<sub>a</sub> ${fmt(m.Ta,0)} °C</td><td>${fxd(r.Amin,1)} mm²</td></tr>
+    <tr><td>Forma simplificada</td><td>A = I · K<sub>f</sub> · √t<sub>c</sub> = ${fxd(r.Icond,1)} × ${fxd(r.Kf,2)} = ${fxd(r.Akcmil,1)} kcmil</td><td>${fxd(r.AkcmilMm,1)} mm²</td></tr>
+    <tr><td>Corriente que soporta cada calibre</td><td>${sz.map(v=>`${v[0]}: ${fxd(v[1]*r.kTer,1)} kA`).join(' · ')}</td><td>${esc(r.sizeN)}: ${fxd(r.Iadm,1)} kA</td></tr>
+   </tbody></table>
+   <p class="note" style="margin:0">La práctica parte de un mínimo de 2/0 AWG por resistencia mecánica y corrosión (ENEL CTS 556). El 4/0 AWG queda justo por debajo de los ${fxd(r.Icond,1)} kA, así que se adopta cobre blando de 250 kcmil; en ETAP se modela con 120 mm², que también supera el mínimo térmico.</p>
+   <h3 style="margin:6px 0 0">Tensiones tolerables (t<sub>s</sub> = ${fxd(r.ts,1)} s, ${m.peso} kg, grava de ${fxd(m.rhos,1)} Ω·m con h<sub>s</sub> = ${fxd(m.hs,2)} m)</h3>
+   <table class="ct cmp"><thead class="nt"><tr><td>Suelo bajo la grava</td><td>C<sub>s</sub></td><td>E<sub>t${m.peso}</sub></td><td>E<sub>p${m.peso}</sub></td></tr></thead><tbody>
+    ${tolRow(`Natural, ${fmt(m.rhoN,0)} Ω·m`,r.tolN,!r.trat)}${tolRow(`Tratado, ${fmt(m.rho1,0)} Ω·m`,r.tolT,r.trat)}
+   </tbody></table>
+   <p class="note" style="margin:0">E<sub>t</sub> = (1000 + 1,5 C<sub>s</sub> ρ<sub>s</sub>) k/√t<sub>s</sub> y E<sub>p</sub> = (1000 + 6 C<sub>s</sub> ρ<sub>s</sub>) k/√t<sub>s</sub>, con k = ${m.peso===70?'0,157':'0,116'} (Dalziel, ${m.peso} kg) y C<sub>s</sub> = 1 − 0,09 (1 − ρ/ρ<sub>s</sub>)/(2h<sub>s</sub> + 0,09). Si el suelo bajo la grava es más conductor (tratado), C<sub>s</sub> baja un poco y con él las tolerables. Con el suelo tratado coinciden con las de ETAP (${fxd(E.Ett,1)} y ${fxd(E.Est,1)} V).</p>
+   <details><summary>Verificación con IEEE 80 paso a paso</summary>
+    <table class="ct" style="margin-top:6px"><tbody>
+     <tr><td>Resistividad de cálculo</td><td>${r.trat?'la mayor del modelo de dos capas (lado seguro)':'suelo natural'}</td><td>ρ = ${fmt(r.rho,0)} Ω·m</td></tr>
+     <tr><td>Espaciamiento y conductor</td><td>retícula base (D); 250 kcmil (d); profundidad (h)</td><td>D = ${fxd(r.D,2)} m · d = ${fxd(r.dmm,2)} mm · h = ${fxd(m.h,2)} m</td></tr>
+     <tr><td>Longitudes (datos de ETAP)</td><td>L<sub>T</sub> = L<sub>C</sub> + L<sub>R</sub></td><td>${fmt(r.LC,0)} + ${fmt(r.LR,0)} = ${fxd(r.LT,1)} m</td></tr>
+     <tr><td>Resistencia (Sverak, 14.2)</td><td>R<sub>g</sub> = ρ [1/L<sub>T</sub> + 1/√(20A) · (1 + 1/(1 + h√(20/A)))]</td><td><b>${fxd(r.Rg,3)} Ω</b></td></tr>
+     <tr><td>Elevación de potencial</td><td>GPR = I<sub>G</sub> · R<sub>g</sub></td><td>${fmt(r.GPR,0)} V</td></tr>
+     <tr><td>Número efectivo de conductores</td><td>n = n<sub>a</sub> n<sub>b</sub> = (2L<sub>C</sub>/L<sub>p</sub>) · √(L<sub>p</sub>/4√A)</td><td>${fxd(r.na,2)} × ${fxd(r.nb,3)} = ${fxd(r.n,2)}</td></tr>
+     <tr><td>Factores de corrección</td><td>K<sub>ii</sub> = 1 (varillas en las esquinas) · K<sub>h</sub> = √(1 + h/h<sub>0</sub>)</td><td>K<sub>ii</sub> = ${fmt(r.Kii,3)} · K<sub>h</sub> = ${fxd(r.Kh,3)}</td></tr>
+     <tr><td>Factor de espaciamiento para tensión de malla</td><td>K<sub>m</sub> = (1/2π)[ln(D²/16hd + (D+2h)²/8Dd − h/4d) + (K<sub>ii</sub>/K<sub>h</sub>) ln(8/π(2n−1))]</td><td>${fxd(r.Km,3)}</td></tr>
+     <tr><td>Factor de irregularidad</td><td>K<sub>i</sub> = 0,644 + 0,148 n</td><td>${fxd(r.Ki,3)}</td></tr>
+     <tr><td>Longitud efectiva</td><td>L<sub>M</sub> = L<sub>C</sub> + [1,55 + 1,22 L<sub>r</sub>/√(L<sub>x</sub>² + L<sub>y</sub>²)] L<sub>R</sub>, L<sub>r</sub> = ${fmt(r.Lr,0)} m</td><td>${fxd(Math.floor(r.LM*10+1e-6)/10,1)} m</td></tr>
+     <tr><td><b>Tensión de malla</b></td><td>E<sub>m</sub> = ρ I<sub>G</sub> K<sub>m</sub> K<sub>i</sub>/L<sub>M</sub> ≤ ${fxd(Lt,1)} V</td><td><b>${fmt(r.Em,0)} V</b></td></tr>
+     <tr><td>Factor de espaciamiento para paso</td><td>K<sub>s</sub> = (1/π)[1/2h + 1/(D+h) + (1/D)(1 − 0,5<sup>n−2</sup>)]</td><td>${fxd(r.Ks,3)}</td></tr>
+     <tr><td>Longitud para paso</td><td>L<sub>S</sub> = 0,75 L<sub>C</sub> + 0,85 L<sub>R</sub></td><td>${fxd(r.LS,1)} m</td></tr>
+     <tr><td><b>Tensión de paso</b></td><td>E<sub>s</sub> = ρ I<sub>G</sub> K<sub>s</sub> K<sub>i</sub>/L<sub>S</sub> ≤ ${fxd(Ls,1)} V</td><td><b>${fmt(r.Es,0)} V</b></td></tr>
+    </tbody></table></details>
+   <details><summary>Por qué el suelo natural no alcanza y hubo que tratar el terreno</summary>
+    <p class="note" style="margin:6px 0">La resistencia tiene un término de longitud, que baja al agregar conductor, y un término de área, ρ/4 · √(π/A) = ${fxd(r.RareaN,2)} Ω con ${fmt(m.rhoN,0)} Ω·m, que solo depende del tamaño de la malla (Laurent–Niemann). Cuando la retícula ya cubre el lote, un conductor nuevo casi no encuentra suelo propio y la resistencia no baja de unos 3 Ω. Para llegar a 1 Ω harían falta unas 10 veces el área del lote, o ρ ≤ 254 Ω·m alrededor de la malla.</p>
+    <table class="ct cmp"><thead class="nt"><tr><td>Malla en el lote, ρ = 800 Ω·m</td><td>L<sub>T</sub> (m)</td><td>Laurent</td><td>Sverak</td><td>Schwarz</td></tr></thead><tbody>
+     ${F.mallas.map(q=>{const d=isFinite(q[1])?3:2;return `<tr><td>${esc(q[0])}</td><td>${isFinite(q[1])?fmt(q[1],0):'∞'}</td><td>${fxd(q[2],d)}</td><td>${fxd(q[3],d)}</td><td>${fxd(q[4],d)}</td></tr>`;}).join('')}
+    </tbody></table>
+    <p class="note" style="margin:6px 0">Con el suelo natural, el cálculo numérico dio: pasar toda la retícula de 6 a 3 m duplica el cobre y solo baja la resistencia de 3,18 a 3,10 Ω; las varillas de 3 m en las esquinas bajan el toque máximo del 14,2 al 11,6 % del GPR y el refuerzo de esquinas otro 10 %; la zona de equipos de unos 3 m baja el toque dentro de ella del 4,7 al 2,7 %. La geometría controla dónde aparecen las tensiones, pero no basta para cumplir.</p>
+    <table class="ct cmp"><thead class="nt"><tr><td>Diseño final</td><td>Natural<br>800 Ω·m</td><td>Tratado solo 3 m<br>80 sobre 800</td><td>Tratado (diseño)<br>80 sobre 100</td></tr></thead><tbody>
+     <tr><td>R<sub>g</sub> (Ω)</td><td>${fxd(F.natural.Rg,3)}</td><td>${fxd(F.trat3.Rg,3)}</td><td><b>${fxd(E.Rg,3)}</b></td></tr>
+     <tr><td>GPR (V)</td><td>${fmt(F.natural.GPR,0)}</td><td>${fmt(F.trat3.GPR,0)}</td><td>${fxd(E.GPR,1)}</td></tr>
+     <tr><td>Toque máximo (V)</td><td>${fmt(F.natural.Et,0)}</td><td>–</td><td><b>${fxd(E.Et,1)}</b></td></tr>
+     <tr><td>Cumple</td><td>${si(false)}</td><td>${si(false)}</td><td>${si(true)}</td></tr>
+    </tbody></table>
+    <p class="note" style="margin:6px 0 0">Los dos primeros casos son del cálculo numérico y el tercero de ETAP, que el cálculo numérico reproduce (0,378 Ω, GPR de 11 905 V). La capa inferior de 100 Ω·m supone que el tratamiento alcanza también el suelo que rodea la zona tratada: es el supuesto más importante del diseño, porque con 800 Ω·m bajo la capa tratada la resistencia queda en unos 2 Ω y no se cumple.</p></details>
+   <p class="note" style="margin:0"><b>Medición y mantenimiento.</b> Después del tratamiento, medir la resistividad (Wenner) para confirmar el modelo de dos capas; si no se llega al valor de diseño, complementar con pozos profundos tratados o ampliar la zona tratada. Medir la resistencia de la malla desde las tapas con el método de caída de potencial (IEEE 81) antes de energizar, al año y luego cada año en época seca, y volver a aplicar el gel si supera 1 Ω o sube más del 20 % respecto al valor medido al energizar.</p>`;
 }
 
 /* ---------- Opción 3 del Excel de apantallamiento (caso A): G0 230 kV, sin mástiles ---------- */

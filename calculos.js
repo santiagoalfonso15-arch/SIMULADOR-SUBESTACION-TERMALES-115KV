@@ -1,28 +1,43 @@
 /* =====================================================================
-   S/E Termales 115 kV · Motor de cálculo compartido
-   Lo usan index.html (herramienta de diseño) y simulador.html (patio 3D),
-   para que los dos muestren siempre los mismos resultados.
+   S/E Termales 115 kV · Motor de cálculo
+   Lo usa index.html (simulador: unifilar, patio 3D y pestañas de cálculo).
+   Los valores por defecto son los del informe final (noviembre de 2026)
+   y de la memoria de la malla de puesta a tierra (Entrega 4, numeral 7).
    ===================================================================== */
 (function(){
 "use strict";
 
 /* ============================================================
-   Datos del proyecto (valores iniciales = entregas G1/G2 + ETAP)
+   Datos del proyecto (informe final, noviembre de 2026)
    ============================================================ */
 const DEF={
   g:{um:123,alt:1800,t:18},
-  ais:{dist:20,mp:40,ko:0.8,kt:1.15,ke:1.4,S:1000,ur:96,npr:226,npm:180,pol:"d",kd:1.1,ins:"qs",extra:0},
-  dis:{link:true,BIL:550,dMode:"none",dMan:0.893,fff:1.15,galibo:4,rnd:true,Es:550,kS:1.04,nExp:0.9,kVB:1.1,barra:"flex",cond:"ACSR",K:10,vano:22,fMode:"pct",pct:3,w:1.628,Fh:500,Wb:11},
-  bar:{tubo:"4",l:11,ip:82,Ireq:2000,Idis:1626.6,a:2.11,beta:0.73,Rp:170,E:69,tk:1},mal:{If:31.18,XR:14.9,Sf:0.107,tf:1,tc:1,ts:1,rho:800,rhos:5000,hs:0.2,peso:50,Ta:26,Lx:116,Ly:108.3,D:4.83,h:0.75,size:"250",mat:"blando",conn:"exo",nR:120,LR:9,rodPos:"esq",
-    /* division de corriente IEEE 80-2013 cl. 15.9 y Anexo C (hilo "malla con division de corriente", 25-nov-2026) */
-    sfMode:"calc",r:0.713,Cp:1.010,Rt:20,n115:3,v115:0.3,z115r:0.559,z115x:0.987,n230:2,v230:0.4,z230r:0.543,z230x:0.869}
+  /* Cap. 5 y 8.3: DPS 3EL2 096-2PQ3 (Ur 96 kV, NPR 226 kV, NPM 180 kV), MP 40 %, fuga 25 mm/kV × 123 × 1,1;
+     cadenas de 17 discos de porcelana ANSI 52-3 (el cálculo pide 15; los planos P-04 a P-06 adoptan 17) */
+  ais:{dist:20,mp:40,ko:0.8,kt:1.15,ke:1.4,S:1000,ur:96,npr:226,npm:180,pol:"d",kd:1.1,ins:"a523",extra:0,nd:17,nCalc:15},
+  /* Cap. 6: barras de cable AAC 2500 kcmil, vano 22 m, flecha 0,33 m (1,5 % de L) */
+  dis:{link:true,BIL:550,dMode:"none",dMan:0.893,fff:1.15,galibo:4,rnd:true,Es:550,kS:1.04,nExp:0.9,kVB:1.1,barra:"flex",cond:"AAC 2500 kcmil",K:10,vano:22,fMode:"pct",pct:1.5,w:3.49,Fh:500,Wb:11},
+  /* Cap. 11 del informe y memoria de la malla (Entrega 4, numeral 7, versión corregida):
+     Sf = 1 por criterio del docente, IF = 30 kA asimétrica, X/R = 30, Cp = 31,5/30, 50 kg, ts = tf = tc = 1 s,
+     grava de 8534,4 Ω·m con 0,35 m, terreno tratado con FAVIGEL (80 Ω·m en los 3 m superiores sobre 100 Ω·m),
+     cobre blando de 250 kcmil a 0,75 m con uniones exotérmicas */
+  mal:{IF:30,tIF:1,XR:30,f:60,tf:1,Sf:1,Ik:31.5,peso:50,Ta:26,
+    trat:1,rhoN:800,rho1:80,H:3,rho2:100,rhos:8534.4,hs:0.35,
+    Lx:108.3,Ly:116,h:0.75,size:"250",mat:"blando",conn:"exo",
+    /* geometría del diseño final (Tabla 4 de la memoria; x de occidente a oriente, y de sur a norte) */
+    nY:20,nX:19,                                   /* retícula base: 20 conductores de 116 m y 19 de 108,3 m */
+    zx0:28,zy0:20,zLx:66,zLy:77,znY:26,znX:23,     /* zona de equipos: 26 conductores de 77 m y 23 de 66 m */
+    eL:9,en:4,eOff:1.5,                            /* refuerzo de esquinas: 9 × 9 m, 4 × 4 conductores, a 1,5 m de los bordes */
+    nRe:40,LRe:3,nRi:15,LRi:2.75,                  /* 40 varillas de 3 m en esquinas y 15 de 2,75 m en neutros AT y DPS */
+    LC:8150,LRt:161,                               /* longitudes del modelo ETAP: conductor y varillas (0 = calcularlas de la geometría) */
+    tapas:6}
 };
-const SUBE_KEY="sube-termales-web-v2";/* v:3 desde el 21-nov: MP 40 % y cadena Quadri*Sil (revisiones de G1 y G3) */
-/* Lee los datos guardados por la herramienta (o los del proyecto si no hay) */
+const SUBE_KEY="sube-termales-web-v3";/* v3 (26-nov-2026): valores del informe final; los datos guardados con claves anteriores no se usan */
+/* Lee los datos guardados por una herramienta de diseño compatible (o los del informe si no hay) */
 function SUBE_load(){const S=JSON.parse(JSON.stringify(DEF));
-  try{const s=JSON.parse(localStorage.getItem(SUBE_KEY)||"null");if(s&&s.v===3)for(const m of Object.keys(DEF))if(m!=="mal"||s.malv===2)Object.assign(S[m],s[m]||{})}catch(e){}
+  try{const s=JSON.parse(localStorage.getItem(SUBE_KEY)||"null");if(s&&s.v===4)for(const m of Object.keys(DEF))Object.assign(S[m],s[m]||{})}catch(e){}
   return S;}
-function SUBE_save(S){try{localStorage.setItem(SUBE_KEY,JSON.stringify({v:3,malv:2,...S}))}catch(e){}}
+function SUBE_save(S){try{localStorage.setItem(SUBE_KEY,JSON.stringify({v:4,...S}))}catch(e){}}
 /* Utilidad de formato usada por los motores */
 const roundUp=(x,s)=>Math.ceil(x/s-1e-9)*s;
 const mx=(a,b)=>b==null?a:Math.max(a,b);
@@ -39,11 +54,14 @@ const AISL={
   p069:{n:"Polimérico Siemens 3FL3-069",tipo:"pol",fuga:3169,lon:1289,liwv:688,sml:100},
   p074:{n:"Polimérico Siemens 3FL3-074",tipo:"pol",fuga:3494,lon:1393,liwv:742,sml:100},
   qs:{n:"Polimérico Hubbell Quadri*Sil S025047H2010",tipo:"pol",fuga:3607,lon:1504,liwv:769,sml:120,arco:1217,cfo:800},/* liwv = CFO 800 kV × (1 − 1,28 × 0,03), Entrega 3 G3 (conductores, §8) */
-  u120:{n:"Disco de vidrio U120B (146 × 254 mm)",tipo:"disco",fuga:292,lon:146,sml:120}
+  u120:{n:"Disco de vidrio U120B (146 × 254 mm)",tipo:"disco",fuga:292,lon:146,sml:120},
+  /* informe final, 8.3: disco de porcelana ANSI 52-3 (p. ej. PPC 81022), 292 mm de fuga, 146 mm de paso, M&E 66,7 kN */
+  a523:{n:"Disco de porcelana ANSI 52-3 (PPC 81022)",tipo:"disco",fuga:292,lon:146,sml:66.7,diam:254}
 };
-const MAT={blando:{n:"Cobre recocido (blando) 100 %",ar:0.00393,K0:234,Tm:1083,rr:1.72,TC:3.42},duro:{n:"Cobre duro comercial 97 %",ar:0.00381,K0:242,Tm:1084,rr:1.78,TC:3.42},cw40:{n:"Acero recubierto de cobre 40 %",ar:0.00378,K0:245,Tm:1084,rr:4.40,TC:3.85}};
+/* Kf: constante de IEEE 80-2013, Tabla 2 (forma simplificada A_kcmil = I · Kf · √tc) */
+const MAT={blando:{n:"Cobre recocido (blando) 100 %",ar:0.00393,K0:234,Tm:1083,rr:1.72,TC:3.42,Kf:7.00},duro:{n:"Cobre duro comercial 97 %",ar:0.00381,K0:242,Tm:1084,rr:1.78,TC:3.42,Kf:7.06},cw40:{n:"Acero recubierto de cobre 40 %",ar:0.00378,K0:245,Tm:1084,rr:4.40,TC:3.85,Kf:10.45}};
 const CONN={exo:{n:"Soldadura exotérmica",lim:Infinity},fuerte:{n:"Soldadura fuerte (≤ 450 °C)",lim:450},mec:{n:"Conectores mecánicos (≤ 250 °C)",lim:250}};
-const SIZES={"2/0":["2/0 AWG",67.4,10.5],"4/0":["4/0 AWG",107.2,13.3],"250":["250 kcmil",126.7,14.6],"300":["300 kcmil",152.0,16.0],"350":["350 kcmil",177.3,17.3],"500":["500 kcmil",253.0,20.6]};
+const SIZES={"2/0":["2/0 AWG",67.4,10.5],"4/0":["4/0 AWG",107.2,13.3],"250":["250 kcmil",126.7,14.63],"300":["300 kcmil",152.0,16.0],"350":["350 kcmil",177.3,17.3],"500":["500 kcmil",253.0,20.6]};
 
 /* ============================================================
    Motor 1: coordinación de aislamiento (base: calculador de Daniel)
@@ -61,7 +79,9 @@ function calcAis(g,p){
   /* fuga IEC 60815: USCD fase-tierra × Um/√3 × kd */
   o.uscd=POL[p.pol][1];o.Lcalc=o.uscd*g.um/Math.sqrt(3)*p.kd;o.Lreq=Math.ceil(o.Lcalc-1e-9);
   const A=AISL[p.ins];o.A=A;
-  if(A.tipo==="disco"){o.n=Math.ceil(o.Lreq/A.fuga)+(+p.extra||0);o.fugaTot=o.n*A.fuga;o.lon=o.n*A.lon;o.okFuga=o.fugaTot>=o.Lreq-1e-9;o.okLiwv=true}
+  if(A.tipo==="disco"){o.nFuga=Math.ceil(o.Lreq/A.fuga-1e-9);o.nCalc=Math.max(o.nFuga,+p.nCalc||0);o.n=Math.max(o.nCalc+(+p.extra||0),+p.nd||0);o.fugaTot=o.n*A.fuga;o.fugaCalc=o.nCalc*A.fuga;o.lon=o.n*A.lon;o.okFuga=o.fugaTot>=o.Lreq-1e-9;o.okLiwv=true;
+    /* informe 8.3: 15 discos dan CFO 1219 kV y una soportabilidad de ≈ 1172 kV a 1800 m; protegidos hasta (1172/1,40 − NPRc)·c/2S ≈ 88 m de un DPS */
+    o.Uw15=1172;o.dStr=(o.Uw15/o.kmin-o.NPRc)*c/(2*p.S);}
   else{o.n=1;o.fugaTot=A.fuga;o.lon=A.lon;o.okFuga=A.fuga>=o.Lreq-1e-9;o.okLiwv=o.BIL?A.liwv>=o.BIL:false;o.okLiwvKa=o.BIL?A.liwv>=o.BIL*o.Ka:false}
   o.ok=!!o.sel&&o.okUr&&o.okFuga&&o.okLiwv;
   return o;
@@ -123,77 +143,88 @@ function calcDis(g,p){
 }
 
 /* ============================================================
-   Motor 3: malla IEEE 80-2013 (motor de Camilo, corregido)
+   Motor 3: malla de puesta a tierra IEEE 80-2013
+   Memoria de la malla (Entrega 4, numeral 7, corregida) y Cap. 11 del informe final:
+   Sf = 1, IG = Sf · Cp · IF, terreno tratado de dos capas, verificación con IEEE 80
+   tomando la resistividad mayor del modelo (lado seguro) y el espaciamiento de la retícula base.
    ============================================================ */
+/* Resultados de ETAP y del cálculo numérico del diseño final (Tablas 5 y 6 de la memoria; Tablas 36 y 37 del informe) */
+const MAL_REF={
+  etap:{Rg:0.381,GPR:11996.2,Et:1370.4,Es:770.3,Ett:1433.4,Est:5385.6,locT:"vértice sureste",locS:"vértice noroeste"},
+  num:{Rg:0.378,GPR:11905,Et:1413,Es:738,Ezona:267},
+  natural:{Rg:3.114,GPR:98085,Et:11305},      /* diseño final con el suelo natural de 800 Ω·m (cálculo numérico) */
+  trat3:{Rg:2.079,GPR:65480},                  /* tratado solo en 3 m, 80 Ω·m sobre 800 Ω·m */
+  /* Tabla 3: resistencia de mallas uniformes en el lote con 800 Ω·m (Laurent, Sverak, Schwarz) */
+  mallas:[["12 × 13, D ≈ 10 m",2800,3.448,3.431,3.553],["20 × 22, D ≈ 5,5 m",4703,3.333,3.316,3.387],["20 × 22 + 76 varillas de 2,4 m",4885,3.326,3.309,3.383],
+          ["37 × 39, D ≈ 3 m",8516,3.257,3.240,3.264],["37 × 39 + 76 varillas de 6 m",8972,3.252,3.235,3.257],["Cobre infinito",Infinity,3.16,3.15,3.07]],
+  /* varillas interiores del cálculo numérico (dan.py, Anexo A): neutros AT en x = 35,8 m y DPS en x = 84,3 m */
+  vInt:[...[42.8,48.8,55.0,71.8,79.1,85.4].map(y=>[35.8,y,"neutro AT"]),...[19.7,25.9,30.4,56.6,62.6,68.8,84.0,90.3,96.5].map(y=>[84.3,y,"DPS"])]
+};
+/* Geometría del diseño final en coordenadas del lote (x de occidente a oriente, y de sur a norte, m) */
+function geomMal(p){
+  const L=[],R=[],add=(x0,y0,x1,y1,g)=>L.push({x0,y0,x1,y1,g});
+  const grupo=(x0,y0,Lx,Ly,nY,nX,g)=>{for(let i=0;i<nY;i++){const x=x0+(nY>1?i*Lx/(nY-1):Lx/2);add(x,y0,x,y0+Ly,g);}for(let j=0;j<nX;j++){const y=y0+(nX>1?j*Ly/(nX-1):Ly/2);add(x0,y,x0+Lx,y,g);}};
+  grupo(0,0,p.Lx,p.Ly,p.nY,p.nX,"base");
+  if(p.znY>0&&p.znX>0) grupo(p.zx0,p.zy0,p.zLx,p.zLy,p.znY,p.znX,"zona");
+  const corners=[[0,0,1,1],[p.Lx,0,-1,1],[0,p.Ly,1,-1],[p.Lx,p.Ly,-1,-1]];
+  if(p.en>0&&p.eL>0) corners.forEach(([cx,cy,sx,sy])=>{const x0=sx>0?cx+p.eOff:cx-p.eOff-p.eL,y0=sy>0?cy+p.eOff:cy-p.eOff-p.eL;grupo(x0,y0,p.eL,p.eL,p.en,p.en,"esq");});
+  /* 10 varillas por esquina: vértice, a 3, 6, 12 y 18 m sobre cada lado y una en el centro del refuerzo (dan.py) */
+  if(p.nRe>0){const pc=Math.max(1,Math.round(p.nRe/4));corners.forEach(([cx,cy,sx,sy])=>{const ps=[[0,0]];[3,6,12,18].forEach(s=>{ps.push([s,0],[0,s]);});ps.push([p.eOff+p.eL/2,p.eOff+p.eL/2]);
+    ps.slice(0,pc).forEach(([a,b])=>R.push({x:cx+sx*a,y:cy+sy*b,L:p.LRe,t:"esq"}));});}
+  const Lgeo=L.reduce((a,s)=>a+Math.hypot(s.x1-s.x0,s.y1-s.y0),0);
+  const tapas=[[0,0],[p.Lx,0],[0,p.Ly],[p.Lx,p.Ly],[0,p.Ly/2],[p.Lx,p.Ly/2]].slice(0,p.tapas||0);
+  return {L,R,Lgeo,tapas};
+}
 function calcMal(p){
-  const o={},capa=p.hs>0&&p.rhos>0,rs=capa?p.rhos:p.rho,ts=p.ts>0?p.ts:p.tf,tc=p.tc>0?p.tc:p.tf;o.capa=capa;o.ts=ts;o.tc=tc;
-  o.Cs=capa?1-0.09*(1-p.rho/p.rhos)/(2*p.hs+0.09):1;
-  o.kb=p.peso===50?0.116:0.157;
-  o.Etouch=(1000+1.5*o.Cs*rs)*o.kb/Math.sqrt(ts);o.Estep=(1000+6*o.Cs*rs)*o.kb/Math.sqrt(ts);
-  o.Tdc=p.XR/(2*Math.PI*60);
-  const dfx=t=>o.Tdc>0?Math.sqrt(1+(o.Tdc/t)*(1-Math.exp(-2*t/o.Tdc))):1;
-  o.Df=dfx(p.tf);o.Dfc=dfx(tc);
-  /* Sf: manual o calculado con cables de guarda (Endrenyi) en paralelo con Rg; Rg se calcula mas abajo */
-  const cx=(a,b)=>({re:a,im:b}),cm=(a,b)=>cx(a.re*b.re-a.im*b.im,a.re*b.im+a.im*b.re),cdv=(a,b)=>{const q=b.re*b.re+b.im*b.im;return cx((a.re*b.re+a.im*b.im)/q,(a.im*b.re-a.re*b.im)/q)},
-        csq=a=>{const m=Math.hypot(a.re,a.im),re=Math.sqrt((m+a.re)/2);return cx(re,(a.im<0?-1:1)*Math.sqrt((m-a.re)/2))},cab=a=>Math.hypot(a.re,a.im);
-  const zinf=(zr,zx,v,Rt)=>{const zs=cx(zr*v,zx*v),r2=csq(cx(zs.re*Rt+(zs.re*zs.re-zs.im*zs.im)/4,zs.im*Rt+zs.re*zs.im/2));return cx(zs.re/2+r2.re,zs.im/2+r2.im);};
-  o.Cp=p.Cp>0?p.Cp:1;o.sfCalc=p.sfMode==="calc";
-  if(o.sfCalc){o.Zi115=zinf(p.z115r,p.z115x,p.v115,p.Rt);o.Zi230=zinf(p.z230r,p.z230x,p.v230,p.Rt);
-    const y1=cdv(cx(p.n115,0),o.Zi115),y2=p.n230>0?cdv(cx(p.n230,0),o.Zi230):cx(0,0);o.Zeq=(p.n115+p.n230)>0?cdv(cx(1,0),cx(y1.re+y2.re,y1.im+y2.im)):null;}
-  const m=MAT[p.mat];o.Tm=Math.min(m.Tm,CONN[p.conn].lim);
-  o.IFc=o.Cp*o.Dfc*p.If; /* corriente asimétrica para el conductor (toda la falla con Cp, sin Sf) */
-  o.Amin=o.IFc/Math.sqrt((m.TC*1e-4/(tc*m.ar*m.rr))*Math.log((m.K0+o.Tm)/(m.K0+p.Ta)));
-  const sz=SIZES[p.size];o.Asec=sz[1];o.dmm=sz[2];o.okCond=o.Asec>=o.Amin;
-  const A=p.Lx*p.Ly;o.A=A;
-  o.nY=Math.max(1,Math.round(p.Lx/p.D))+1;o.nX=Math.max(1,Math.round(p.Ly/p.D))+1;
-  o.LC=o.nY*p.Ly+o.nX*p.Lx;o.Lp=2*(p.Lx+p.Ly);
-  o.Deff=(p.Lx/(o.nY-1)+p.Ly/(o.nX-1))/2;
-  const D=o.Deff,d=o.dmm/1000,h=p.h;
-  o.LRt=p.nR*p.LR;o.LT=o.LC+o.LRt;
-  o.Rg=p.rho*(1/o.LT+(1/Math.sqrt(20*A))*(1+1/(1+h*Math.sqrt(20/A))));
-  if(o.sfCalc&&o.Zeq){o.div=cab(o.Zeq)/cab(cx(o.Zeq.re+o.Rg,o.Zeq.im));o.Sf=p.r*o.div;o.Zsis=cab(cdv(cx(o.Zeq.re*o.Rg,o.Zeq.im*o.Rg),cx(o.Zeq.re+o.Rg,o.Zeq.im)));}
-  else {o.Sf=o.sfCalc?p.r:p.Sf;o.div=null;o.Zsis=null;}
-  o.Ig=o.Sf*p.If*1000;o.IG=o.Cp*o.Df*o.Ig;
+  const o={},ts=p.tf,tc=p.tf;o.ts=ts;o.tc=tc;
+  /* resistividades: tratado (modelo de dos capas de ETAP) o natural */
+  o.trat=!!p.trat;o.rho=o.trat?Math.max(p.rho1,p.rho2):p.rhoN;o.rhoCs=o.trat?p.rho1:p.rhoN;
+  /* tensiones tolerables (IEEE 80, 8.4 y 7.4) */
+  const capa=p.hs>0&&p.rhos>0,rs=capa?p.rhos:o.rhoCs;o.capa=capa;
+  const csx=r=>capa?1-0.09*(1-r/p.rhos)/(2*p.hs+0.09):1;
+  o.kb=p.peso===70?0.157:0.116;
+  const tol=r=>{const Cs=csx(r);return {Cs,Et:(1000+1.5*Cs*rs)*o.kb/Math.sqrt(ts),Es:(1000+6*Cs*rs)*o.kb/Math.sqrt(ts)};};
+  const tc0=tol(o.rhoCs);o.Cs=tc0.Cs;o.Etouch=tc0.Et;o.Estep=tc0.Es;o.tolN=tol(p.rhoN);o.tolT=tol(p.rho1);
+  /* corrientes (15.9 y 15.10): IF asimétrica del enunciado, Df con X/R, Cp = Ik de los equipos / IF */
+  /* la corriente asimétrica del enunciado se refiere a la falla de diseño de 1 s: 3I0 = IF/Df(1 s) no depende de tf */
+  o.Ta=p.XR/(2*Math.PI*p.f);const dfx=t=>Math.sqrt(1+(o.Ta/t)*(1-Math.exp(-2*t/o.Ta)));o.tIF=p.tIF>0?p.tIF:1;
+  o.Df0=dfx(o.tIF);o.Df=dfx(p.tf);o.I3I0=p.IF/o.Df0;o.Cp=p.Ik>0?p.Ik/p.IF:1;o.Sf=p.Sf;
+  o.IG=o.Sf*o.Cp*o.Df*o.I3I0*1000;o.ip=Math.sqrt(2)*(1.02+0.98*Math.exp(-3/p.XR))*o.I3I0;
+  /* conductor (11.3.1): I = Cp · Df · 3I0 (= Cp · IF con tf = 1 s); forma exacta y forma simplificada con Kf */
+  const m=MAT[p.mat];o.Tm=Math.min(m.Tm,CONN[p.conn].lim);o.Icond=o.Cp*o.Df*o.I3I0;
+  o.kTer=Math.sqrt((m.TC*1e-4/(tc*m.ar*m.rr))*Math.log((m.K0+o.Tm)/(m.K0+p.Ta)));
+  o.Amin=o.Icond/o.kTer;
+  o.Kf=p.conn==="exo"?m.Kf:1.9735/Math.sqrt((m.TC*1e-4/(m.ar*m.rr))*Math.log((m.K0+o.Tm)/(m.K0+p.Ta)));
+  o.Akcmil=o.Icond*o.Kf*Math.sqrt(tc);o.AkcmilMm=o.Akcmil*0.5067;o.AreqMm=Math.max(o.Amin,o.AkcmilMm);
+  const sz=SIZES[p.size];o.sizeN=sz[0];o.Asec=sz[1];o.dmm=sz[2];o.Iadm=o.Asec*o.kTer;o.okCond=o.Asec>=o.AreqMm-1e-9;
+  /* geometría */
+  const G=geomMal(p);o.geo=G;
+  const A=p.Lx*p.Ly;o.A=A;o.Lp=2*(p.Lx+p.Ly);
+  o.LCgeo=G.Lgeo;o.LC=p.LC>0?p.LC:G.Lgeo;
+  o.nRtot=p.nRe+p.nRi;o.LRgeo=p.nRe*p.LRe+p.nRi*p.LRi;o.LR=p.LRt>0?p.LRt:o.LRgeo;o.LT=o.LC+o.LR;
+  o.D=p.Lx/(p.nY-1);o.Dy=p.Ly/(p.nX-1);
+  o.zDx=p.znY>1?p.zLx/(p.znY-1):0;o.zDy=p.znX>1?p.zLy/(p.znX-1):0;
+  const D=o.D,d=o.dmm/1000,h=p.h,rho=o.rho;
+  /* resistencia (Sverak, 14.2) y límites */
+  o.Rg=rho*(1/o.LT+(1/Math.sqrt(20*A))*(1+1/(1+h*Math.sqrt(20/A))));
+  o.Rarea=rho/4*Math.sqrt(Math.PI/A);o.RareaN=p.rhoN/4*Math.sqrt(Math.PI/A);o.rhoMax1=4/Math.sqrt(Math.PI/A);
   o.GPR=o.IG*o.Rg;
+  /* tensiones de malla y de paso (16.5) */
   o.na=2*o.LC/o.Lp;o.nb=Math.sqrt(o.Lp/(4*Math.sqrt(A)));o.n=o.na*o.nb;
-  const esq=p.rodPos==="esq"&&p.nR>0;o.esq=esq;
-  o.Kii=esq?1:1/Math.pow(2*o.n,2/o.n);o.Kh=Math.sqrt(1+h/1);
+  o.Kii=p.nRe>0?1:1/Math.pow(2*o.n,2/o.n);o.Kh=Math.sqrt(1+h/1);
   o.Km=(1/(2*Math.PI))*(Math.log(D*D/(16*h*d)+Math.pow(D+2*h,2)/(8*D*d)-h/(4*d))+(o.Kii/o.Kh)*Math.log(8/(Math.PI*(2*o.n-1))));
   o.Ki=0.644+0.148*o.n;
-  o.LM=esq?o.LC+(1.55+1.22*(p.LR/Math.sqrt(p.Lx*p.Lx+p.Ly*p.Ly)))*o.LRt:o.LC+o.LRt;
-  o.Em=p.rho*o.Km*o.Ki*o.IG/o.LM;
+  o.Lr=p.LRe;o.LM=o.LC+(1.55+1.22*(o.Lr/Math.sqrt(p.Lx*p.Lx+p.Ly*p.Ly)))*o.LR;
+  o.Em=rho*o.Km*o.Ki*o.IG/o.LM;
   o.Ks=(1/Math.PI)*(1/(2*h)+1/(D+h)+(1/D)*(1-Math.pow(0.5,o.n-2)));
-  o.LS=0.75*o.LC+0.85*o.LRt;o.Es=p.rho*o.Ks*o.Ki*o.IG/o.LS;
-  o.safeGPR=o.GPR<=o.Etouch;o.okEm=o.Em<=o.Etouch;o.okEs=o.Es<=o.Estep;o.okMalla=o.safeGPR||(o.okEm&&o.okEs);
-  o.fuera=o.n>25||o.Deff<2.5||h<0.25||h>2.5;
-  o.ok=o.okCond&&o.okMalla&&!o.fuera;
-  o.LMreq=p.rho*o.Km*o.Ki*o.IG/o.Etouch;
+  o.LS=0.75*o.LC+0.85*o.LR;o.Es=rho*o.Ks*o.Ki*o.IG/o.LS;
+  o.okRg=o.Rg<=1+1e-9;o.okEm=o.Em<=o.Etouch;o.okEs=o.Es<=o.Estep;o.safeGPR=o.GPR<=o.Etouch;
+  /* IEEE 80 limita las ecuaciones simplificadas a n ≤ 25 y retícula uniforme: el diseño se valida con ETAP y el cálculo numérico */
+  o.fuera=o.n>25||D<2.5||h<0.25||h>2.5;
+  o.ok=o.okCond&&o.okRg&&o.okEm&&o.okEs;
+  o.ref=MAL_REF;
   return o;
 }
 
-/* ============================================================
-   Motor 4: barraje principal rígido (tubo de aluminio)
-   IEEE 738 (ampacidad, tabla calculada), IEC 60865-1 (esfuerzos)
-   ============================================================ */
-/* Tubos Al 6063-T6 IPS cédula 40. amp = ampacidad IEEE 738 a 26 °C, 1800 msnm, viento 0,61 m/s, sol, conductor a 75 °C */
-const TUBOS={"3":{n:'3" IPS cédula 40',D:88.9,t:5.49,amp:2086},"3.5":{n:'3½" IPS cédula 40',D:101.6,t:5.74,amp:2385},"4":{n:'4" IPS cédula 40',D:114.3,t:6.02,amp:2694},"5":{n:'5" IPS cédula 40',D:141.3,t:6.55,amp:3352}};
-function calcBar(p){
-  const T=TUBOS[p.tubo]||TUBOS["4"],r={p,T},g=9.81,dens=2700;
-  const Do=T.D/1000,di=Do-2*T.t/1000;
-  r.A=Math.PI/4*(Do*Do-di*di);r.Amm=r.A*1e6;r.m=r.A*dens;r.w=r.m*g;
-  r.I=Math.PI*(Math.pow(Do,4)-Math.pow(di,4))/64;r.Z=r.I/(Do/2);
-  r.amp=T.amp;r.okAmp=r.amp>=p.Ireq;r.carga=p.Idis/r.amp;
-  r.Amin=350;r.okTerm=r.Amm>=r.Amin;
-  r.Fp=2e-7*Math.sqrt(3)/2*Math.pow(p.ip*1000,2)/p.a;
-  r.Mh=p.beta*r.Fp*p.l*p.l/8;r.Mv=r.w*p.l*p.l/8;
-  r.sigma=Math.hypot(r.Mh,r.Mv)/r.Z/1e6;
-  const k=1-2*T.t/T.D;r.q=1.7*(1-k*k*k)/(1-k*k*k*k);r.sigAdm=r.q*p.Rp;r.okSig=r.sigma<=r.sigAdm;
-  r.flecha=5*r.w*Math.pow(p.l,4)/(384*p.E*1e9*r.I)*1000;r.flAdm=p.l/200*1000;r.okFl=r.flecha<=r.flAdm;
-  r.f0=Math.PI/(2*p.l*p.l)*Math.sqrt(p.E*1e9*r.I/r.m);r.okF0=r.f0<0.5*60;
-  r.Fd=2.7*1.1*r.Fp*p.l/1000;
-  r.ok=r.okAmp&&r.okTerm&&r.okSig&&r.okFl;
-  return r;
-}
-
-window.SUBE={DEF,KEY:SUBE_KEY,load:SUBE_load,save:SUBE_save,BIL_IEC,RETIE_C,RETIE_A,POL,AISL,MAT,CONN,SIZES,calcAis,calcDis,calcMal,TUBOS,calcBar};
+window.SUBE={DEF,KEY:SUBE_KEY,load:SUBE_load,save:SUBE_save,BIL_IEC,RETIE_C,RETIE_A,POL,AISL,MAT,CONN,SIZES,calcAis,calcDis,calcMal,geomMal,MAL_REF};
 })();
